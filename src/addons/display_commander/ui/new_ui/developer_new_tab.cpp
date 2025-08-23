@@ -176,9 +176,9 @@ void DrawSyncIntervalSettings() {
             case 0: oss << "Application-Controlled"; break;
             case 1: oss << "No-VSync (0)"; break;
             case 2: oss << "V-Sync (1)"; break;
-            case 3: oss << "V-Sync 2x (2)"; break;
-            case 4: oss << "V-Sync 3x (3)"; break;
-            case 5: oss << "V-Sync 4x (4)"; break;
+            case 3: oss << "V-Sync 2x (2) incompatible with flip-model swap chains (extra latency)"; break;
+            case 4: oss << "V-Sync 3x (3) incompatible with flip-model swap chains (extra latency)"; break;
+            case 5: oss << "V-Sync 4x (4) incompatible with flip-model swap chains (extra latency)"; break;
             default: oss << "Unknown"; break;
         }
         extern void LogInfo(const char* message);
