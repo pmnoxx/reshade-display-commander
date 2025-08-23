@@ -20,6 +20,9 @@ void DrawNvapiSettings();
 // Draw Reflex settings section
 void DrawReflexSettings();
 
+// Draw sync interval settings section
+void DrawSyncIntervalSettings();
+
 // Draw latency display section
 void DrawLatencyDisplay();
 

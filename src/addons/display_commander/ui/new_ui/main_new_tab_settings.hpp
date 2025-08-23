@@ -30,6 +30,8 @@ public:
     FloatSetting fps_limit;
     FloatSetting fps_limit_background;
     
+
+    
     // Audio Settings
     FloatSetting audio_volume_percent;
     BoolSetting audio_mute;

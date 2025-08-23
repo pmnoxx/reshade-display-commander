@@ -64,9 +64,50 @@ bool OnCreateSwapchainCapture(reshade::api::device_api /*api*/, reshade::api::sw
 bool OnCreateSwapchainCapture(reshade::api::swapchain_desc& desc, void* hwnd) {
 #endif
   if (hwnd == nullptr) return false;
+  
+  // Apply sync interval setting if enabled
+  bool modified = false;
+  extern float s_sync_interval;
+  
+  if (s_sync_interval >= 0.0f) {
+    int sync_value = static_cast<int>(s_sync_interval);
+    if (sync_value == 0) {
+      // Application-Controlled: don't modify
+    } else if (sync_value == 1) {
+      // No-VSync (0)
+      desc.sync_interval = 0;
+      modified = true;
+    } else if (sync_value == 2) {
+      // V-Sync (1)
+      desc.sync_interval = 1;
+      modified = true;
+    } else if (sync_value == 3) {
+      // V-Sync 2x (2)
+      desc.sync_interval = 2;
+      modified = true;
+    } else if (sync_value == 4) {
+      // V-Sync 3x (3)
+      desc.sync_interval = 3;
+      modified = true;
+    } else if (sync_value == 5) {
+      // V-Sync 4x (4)
+      desc.sync_interval = 4;
+      modified = true;
+    }
+    
+    if (modified) {
+      extern void LogInfo(const char* message);
+      std::ostringstream oss;
+      oss << "Sync interval modified to " << desc.sync_interval << " for swapchain creation";
+      ::LogInfo(oss.str().c_str());
+    }
+  }
+  
+  // Store the sync interval for UI display
   std::scoped_lock lk(g_sync_mutex);
   g_hwnd_to_syncinterval[static_cast<HWND>(hwnd)] = desc.sync_interval; // UINT32_MAX or 0..4
-  return false; // do not modify
+  
+  return modified; // return true if we modified the desc
 }
 
 void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {

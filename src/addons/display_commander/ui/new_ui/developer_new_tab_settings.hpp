@@ -38,6 +38,9 @@ public:
     renodx::ui::new_ui::BoolSetting reflex_enabled;
     renodx::ui::new_ui::BoolSetting reflex_debug_output;
     
+    // Sync Interval Settings
+    renodx::ui::new_ui::ComboSetting sync_interval;
+    
     // Get all settings for bulk operations
     std::vector<renodx::ui::new_ui::SettingBase*> GetAllSettings();
 };
