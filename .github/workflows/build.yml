@@ -6,6 +6,10 @@ on:
     tags: [ 'v*' ]
   pull_request:
     branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -50,20 +54,17 @@ jobs:
         id: collect
         shell: bash
         run: |
-          shopt -s nullglob
           mkdir -p artifacts
-          shopt -s extglob
-          # Find produced addon file(s)
-          mapfile -t files < <(ls -1 build/*renodx-*.${{ matrix.artifact_suffix }} 2>/dev/null || true)
-          if [ ${#files[@]} -eq 0 ]; then
+          files=$(find build -type f -name "renodx-*.${{ matrix.artifact_suffix }}" || true)
+          if [ -z "$files" ]; then
             echo "No addon files found; listing build dir for debugging:" >&2
             ls -la build || true
             exit 1
           fi
-          for f in "${files[@]}"; do
+          while IFS= read -r f; do
             base=$(basename "$f")
             cp "$f" "artifacts/$base"
-          done
+          done <<< "$files"
           echo "artifact_dir=artifacts" >> $GITHUB_OUTPUT
 
       - name: Upload artifact
@@ -76,7 +77,7 @@ jobs:
   release:
     name: Release
     needs: [ build ]
-    if: startsWith(github.ref, 'refs/tags/')
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/') || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: windows-latest
     steps:
       - name: Download build artifacts (x64)
@@ -91,13 +92,23 @@ jobs:
           name: renodx-display-commander-addon32
           path: artifacts
 
-      - name: Create Release
-        id: create_release
+      - name: Create Tag Release
+        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           files: |
             artifacts/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create/Update Latest Release (main)
+        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+        uses: ncipollo/release-action@v1
+        with:
+          tag: latest
+          name: Latest
+          allowUpdates: true
+          artifacts: artifacts/*
+          token: ${{ secrets.GITHUB_TOKEN }}
 
 
