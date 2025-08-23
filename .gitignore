@@ -1,5 +1,6 @@
 # CMake build directories
 build/
+build32/
 out/
 _build/
 
@@ -39,4 +40,5 @@ Desktop.ini
 
 bd.ps1
 
-
+# tmp
+tmp/
