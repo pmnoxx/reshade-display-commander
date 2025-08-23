@@ -51,6 +51,7 @@ public:
 
 private:
     bool initialized = false;
+    bool failed_to_initialize = false;
     bool fullscreen_prevention_enabled = false;
     std::string last_error;
     NvDRSSessionHandle hSession = {0};

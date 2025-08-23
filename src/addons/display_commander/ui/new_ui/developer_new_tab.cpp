@@ -221,24 +221,24 @@ void DrawSyncIntervalSettings() {
 }
 
 void DrawNvapiSettings() {
-    if (::g_nvapiFullscreenPrevention.IsAvailable()) {
-        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "=== NVAPI Settings ===");
-        
-        // HDR10 Colorspace Fix
-        if (CheckboxSetting(g_developerTabSettings.fix_hdr10_colorspace, "Fix NVAPI HDR10 Colorspace for reshade addon")) {
-            s_fix_hdr10_colorspace = g_developerTabSettings.fix_hdr10_colorspace.GetValue() ? 1.0f : 0.0f;
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Automatically fix HDR10 colorspace when swapchain format is RGB10A2 and colorspace is currently sRGB. Only works when the game is using sRGB colorspace.");
-        }
-        
-        // NVAPI Fullscreen Prevention
-        if (CheckboxSetting(g_developerTabSettings.nvapi_fullscreen_prevention, "NVAPI Fullscreen Prevention")) {
-            s_nvapi_fullscreen_prevention = g_developerTabSettings.nvapi_fullscreen_prevention.GetValue() ? 1.0f : 0.0f;
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Use NVAPI to prevent fullscreen mode at the driver level.");
-        }
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "=== NVAPI Settings ===");
+    
+    // HDR10 Colorspace Fix
+    if (CheckboxSetting(g_developerTabSettings.fix_hdr10_colorspace, "Fix NVAPI HDR10 Colorspace for reshade addon")) {
+        s_fix_hdr10_colorspace = g_developerTabSettings.fix_hdr10_colorspace.GetValue() ? 1.0f : 0.0f;
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Automatically fix HDR10 colorspace when swapchain format is RGB10A2 and colorspace is currently sRGB. Only works when the game is using sRGB colorspace.");
+    }
+    
+    // NVAPI Fullscreen Prevention
+    if (CheckboxSetting(g_developerTabSettings.nvapi_fullscreen_prevention, "NVAPI Fullscreen Prevention")) {
+        s_nvapi_fullscreen_prevention = g_developerTabSettings.nvapi_fullscreen_prevention.GetValue() ? 1.0f : 0.0f;
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Use NVAPI to prevent fullscreen mode at the driver level.");
+    }
+    if (s_nvapi_fullscreen_prevention >= 0.5f && ::g_nvapiFullscreenPrevention.IsAvailable()) {
         
         // NVAPI HDR Logging
         if (CheckboxSetting(g_developerTabSettings.nvapi_hdr_logging, "NVAPI HDR Logging")) {
@@ -249,6 +249,7 @@ void DrawNvapiSettings() {
                 std::thread(::RunBackgroundNvapiHdrMonitor).detach();
             }
         }
+        
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Enable HDR monitor information logging via NVAPI.");
         }
@@ -268,42 +269,43 @@ void DrawNvapiSettings() {
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Force HDR10 mode using NVAPI.");
         }
+        if (g_developerTabSettings.nvapi_hdr_logging.GetValue()) {
         
-        // NVAPI Debug Information Display
-        ImGui::Separator();
-        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "NVAPI Debug Information:");
+            // NVAPI Debug Information Display
+            ImGui::Separator();
+            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "NVAPI Debug Information:");
+            
+            extern NVAPIFullscreenPrevention g_nvapiFullscreenPrevention;
         
-        extern NVAPIFullscreenPrevention g_nvapiFullscreenPrevention;
-    
-        // Library loaded successfully
-        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ NVAPI Library: Loaded");
-        
-        // Driver version info
-        std::string driverVersion = ::g_nvapiFullscreenPrevention.GetDriverVersion();
-        if (driverVersion != "Failed to get driver version") {
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ Driver Version: %s", driverVersion.c_str());
-        } else {
-            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "⚠ Driver Version: %s", driverVersion.c_str());
+            // Library loaded successfully
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ NVAPI Library: Loaded");
+            
+            // Driver version info
+            std::string driverVersion = ::g_nvapiFullscreenPrevention.GetDriverVersion();
+            if (driverVersion != "Failed to get driver version") {
+                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ Driver Version: %s", driverVersion.c_str());
+            } else {
+                ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "⚠ Driver Version: %s", driverVersion.c_str());
+            }
+            
+            // Hardware detection
+            if (::g_nvapiFullscreenPrevention.HasNVIDIAHardware()) {
+                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ NVIDIA Hardware: Detected");
+            } else {
+                ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "✗ NVIDIA Hardware: Not Found");
+            }
+            
+            // Fullscreen prevention status
+            if (::g_nvapiFullscreenPrevention.IsFullscreenPreventionEnabled()) {
+                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ Fullscreen Prevention: ACTIVE");
+            } else {
+                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "○ Fullscreen Prevention: Inactive");
+            }
+            
+            // Function availability check
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ Core Functions: Available");
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ DRS Functions: Available");
         }
-        
-        // Hardware detection
-        if (::g_nvapiFullscreenPrevention.HasNVIDIAHardware()) {
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ NVIDIA Hardware: Detected");
-        } else {
-            ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "✗ NVIDIA Hardware: Not Found");
-        }
-        
-        // Fullscreen prevention status
-        if (::g_nvapiFullscreenPrevention.IsFullscreenPreventionEnabled()) {
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ Fullscreen Prevention: ACTIVE");
-        } else {
-            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "○ Fullscreen Prevention: Inactive");
-        }
-        
-        // Function availability check
-        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ Core Functions: Available");
-        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ DRS Functions: Available");
-        
     } else {
         // Library not loaded
         ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "✗ NVAPI Library: Not Loaded");

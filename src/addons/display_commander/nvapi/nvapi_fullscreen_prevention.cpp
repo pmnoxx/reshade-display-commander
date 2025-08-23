@@ -11,7 +11,7 @@ NVAPIFullscreenPrevention::~NVAPIFullscreenPrevention() {
 }
 
 bool NVAPIFullscreenPrevention::Initialize() {
-    if (initialized) {
+    if (initialized || failed_to_initialize) {
         return true;
     }
     
@@ -31,8 +31,9 @@ bool NVAPIFullscreenPrevention::Initialize() {
         } else if (status == NVAPI_ERROR) {
             oss << " (General error)";
         }
-        
+
         last_error = oss.str();
+        failed_to_initialize = true;
         return false;
     }
     

@@ -154,8 +154,8 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
     }
 
     
-    // Initialize NVAPI fullscreen prevention if enabled
-    if (s_nvapi_fullscreen_prevention >= 0.5f) {
+    // Initialize NVAPI fullscreen prevention if enabled and not already initialized
+    if (s_nvapi_fullscreen_prevention >= 0.5f && !::g_nvapiFullscreenPrevention.IsAvailable()) {
       if (::g_nvapiFullscreenPrevention.Initialize()) {
         LogInfo("NVAPI initialized proactively for fullscreen prevention");
         if (::g_nvapiFullscreenPrevention.SetFullscreenPrevention(true)) {
