@@ -54,7 +54,7 @@ else()
   message(WARNING "NVAPI libs not found at ${CMAKE_CURRENT_LIST_DIR}/external/SpecialK/depends/lib/nvapi. NVAPI features may fail to link.")
 endif()
 
-# Output naming similar to renodx2
+# Output naming
 if(CMAKE_GENERATOR_PLATFORM STREQUAL "Win32" OR CMAKE_EXE_LINKER_FLAGS MATCHES "/machine:X86" OR CMAKE_SIZEOF_VOID_P EQUAL 4)
   set(TARGET_SUFFIX ".addon32")
 else()
@@ -62,7 +62,6 @@ else()
 endif()
 
 set_target_properties(display_commander PROPERTIES
-  PREFIX "renodx-"
   SUFFIX "${TARGET_SUFFIX}"
 )
 

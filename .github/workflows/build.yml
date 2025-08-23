@@ -55,7 +55,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p artifacts
-          files=$(find build -type f -name "renodx-*.${{ matrix.artifact_suffix }}" || true)
+          files=$(find build -type f -name "*.${{ matrix.artifact_suffix }}" || true)
           if [ -z "$files" ]; then
             echo "No addon files found; listing build dir for debugging:" >&2
             ls -la build || true
@@ -70,7 +70,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: renodx-display-commander-${{ matrix.artifact_suffix }}
+          name: display-commander-${{ matrix.artifact_suffix }}
           path: ${{ steps.collect.outputs.artifact_dir }}/*
           if-no-files-found: error
 
@@ -83,13 +83,13 @@ jobs:
       - name: Download build artifacts (x64)
         uses: actions/download-artifact@v4
         with:
-          name: renodx-display-commander-addon64
+          name: display-commander-addon64
           path: artifacts
 
       - name: Download build artifacts (x86)
         uses: actions/download-artifact@v4
         with:
-          name: renodx-display-commander-addon32
+          name: display-commander-addon32
           path: artifacts
 
       - name: Create Tag Release

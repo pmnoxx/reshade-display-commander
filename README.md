@@ -24,7 +24,7 @@ Note: Applying window operations from the main thread can crash some apps. This 
 ## Installation
 
 1. Download a prebuilt addon from Releases (CI uploads artifacts for both x64 and x86), or build from source.
-2. Copy the file `renodx-display_commander.addon64` (or `.addon32` for 32-bit) to the folder where ReShade is loaded for your game (the same folder as the ReShade runtime, e.g., `dxgi.dll`).
+2. Copy the file `display_commander.addon64` (or `.addon32` for 32-bit) to the folder where ReShade is loaded for your game (the same folder as the ReShade runtime, e.g., `dxgi.dll`).
    - Alternatively, place it into your global ReShade installation directory (for example `D:\\Program Files\\ReShade`).
 3. Launch the game, open the ReShade overlay (Home by default), go to the Add-ons tab, and locate "Display Commander".
 
@@ -60,7 +60,7 @@ Build (x64):
 ```bash
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build --config Release --parallel
-# Output: build/renodx-display_commander.addon64
+# Output: build/display_commander.addon64
 ```
 
 Build (x86, 32-bit):
@@ -68,7 +68,7 @@ Build (x86, 32-bit):
 ```bash
 cmake -S . -B build32 -G "Ninja Multi-Config" -A Win32
 cmake --build build32 --config Release --parallel
-# Output: build32/Release/renodx-display_commander.addon32 (or build32/renodx-display_commander.addon32)
+# Output: build32/Release/display_commander.addon32 (or build32/display_commander.addon32)
 ```
 
 Notes:
