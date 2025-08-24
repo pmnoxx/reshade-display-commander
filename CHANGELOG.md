@@ -1,3 +1,8 @@
+## v0.2.1 (2025-08-23)
+
+- **Documentation improvements** - Added direct download links to latest builds in README for easier access
+- **Build accessibility** - Users can now directly download the latest x64 and x86 builds from the README
+
 ## v0.2.0 (2025-08-23)
 
 - **Complete UI rewrite** - New modern interface with improved tabs and better organization
