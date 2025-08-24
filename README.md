@@ -4,6 +4,10 @@ ReShade Display Commander is a ReShade addon that provides in-game control over 
 
 Note: Applying window operations from the main thread can crash some apps. This addon performs them on a background thread.
 
+-Latest builds:
+-- x64: [display_commander.addon64](../../releases/latest/download/display_commander.addon64)      
+-- x86: [display_commander.addon32](../../releases/latest/download/display_commander.addon32)    
+
 ## Features
 
 - Window management: Borderless windowed (aspect ratio or explicit width/height) and borderless fullscreen
