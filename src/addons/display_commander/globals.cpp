@@ -164,6 +164,8 @@ std::atomic<bool> g_reflex_active{false};
 // Backbuffer dimensions
 std::atomic<int> g_last_backbuffer_width{0};
 std::atomic<int> g_last_backbuffer_height{0};
+// Background/foreground state (updated by monitoring thread)
+std::atomic<bool> g_app_in_background{false};
 
 // Vector variables
 std::vector<MonitorInfo> g_monitors;

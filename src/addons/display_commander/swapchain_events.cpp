@@ -182,35 +182,7 @@ void OnPresentUpdate(
     const reshade::api::rect* /*source_rect*/, const reshade::api::rect* /*dest_rect*/,
     uint32_t /*dirty_rect_count*/, const reshade::api::rect* /*dirty_rects*/) {
   
-  // Track swap chain buffer size changes
-  static uint32_t last_width = 0;
-  static uint32_t last_height = 0;
-  
-  if (swapchain != nullptr) {
-    uint32_t current_width = 0;
-    uint32_t current_height = 0;
-    
-    // Get the current back buffer dimensions
-    if (swapchain->get_back_buffer_count() > 0) {
-      auto back_buffer = swapchain->get_back_buffer(0);
-      if (back_buffer != 0) {
-        auto desc = swapchain->get_device()->get_resource_desc(back_buffer);
-        current_width = desc.texture.width;
-        current_height = desc.texture.height;
-      }
-    }
-    
-    // Log if dimensions changed
-    if (current_width != last_width || current_height != last_height) {
-      if (last_width != 0 || last_height != 0) { // Don't log on first call
-        std::ostringstream oss;
-        oss << "Swap chain buffer size changed: " << last_width << "x" << last_height << " -> " << current_width << "x" << current_height;
-        LogInfo(oss.str().c_str());
-      }
-      last_width = current_width;
-      last_height = current_height;
-    }
-  }
+  // Avoid querying swapchain/device descriptors every frame. These are updated elsewhere.
   
   // Throttle queries to ~every 30 presents
   int c = ++g_comp_query_counter;
@@ -243,14 +215,10 @@ void OnPresentUpdate(
   // Call Custom FPS Limiter on EVERY frame (not throttled)
   extern const float s_custom_fps_limiter_enabled;
   if (s_custom_fps_limiter_enabled > 0.5f) {
-    // Check window focus and apply appropriate FPS limit
-    extern std::atomic<HWND> g_last_swapchain_hwnd;
+    // Use background flag computed by monitoring thread; avoid GetForegroundWindow here
+    extern std::atomic<bool> g_app_in_background;
     extern float s_fps_limit_background;
-    
-    HWND hwnd = g_last_swapchain_hwnd.load();
-    if (hwnd == nullptr) hwnd = GetForegroundWindow();
-    
-    const bool is_background = (hwnd != nullptr && GetForegroundWindow() != hwnd);
+    const bool is_background = g_app_in_background.load(std::memory_order_acquire);
     
     // Get the appropriate FPS limit based on focus state
     float target_fps = 0.0f;
@@ -285,24 +253,29 @@ void OnPresentUpdate(
     }
   }
 
-  // Apply input blocking based on background/foreground state every frame
+  // Apply input blocking based on background/foreground; avoid OS calls and redundant writes
   {
     reshade::api::effect_runtime* runtime = g_reshade_runtime.load();
     if (runtime != nullptr) {
-      HWND hwnd = g_last_swapchain_hwnd.load();
-      if (hwnd == nullptr) hwnd = GetForegroundWindow();
-      const bool is_background = (hwnd != nullptr && GetForegroundWindow() != hwnd);
+      static bool last_block_mouse = false;
+      static bool last_block_keyboard = false;
+      static bool last_block_warp = false;
+      extern std::atomic<bool> g_app_in_background;
+      const bool is_background = g_app_in_background.load(std::memory_order_acquire);
       const bool block_mouse = (s_block_mouse_in_background >= 0.5f) && is_background;
       const bool block_keyboard = (s_block_keyboard_in_background >= 0.5f) && is_background;
       const bool block_warp = (s_block_mouse_cursor_warping_in_background >= 0.5f) && is_background;
-      if (block_mouse) {  
+      if (block_mouse != last_block_mouse) {
         runtime->block_mouse_input(block_mouse);
+        last_block_mouse = block_mouse;
       }
-      if (block_keyboard) {
+      if (block_keyboard != last_block_keyboard) {
         runtime->block_keyboard_input(block_keyboard);
+        last_block_keyboard = block_keyboard;
       }
-      if (block_warp) {
+      if (block_warp != last_block_warp) {
         runtime->block_mouse_cursor_warping(block_warp);
+        last_block_warp = block_warp;
       }
     }
   }
@@ -313,16 +286,7 @@ void OnPresentUpdate(
   if ((c % 30) != 0) return;
   
   
-  DxgiBypassMode mode = GetIndependentFlipState(swapchain);
-  int state = 0;
-  switch (mode) {
-    case DxgiBypassMode::kComposed: state = 1; break;
-    case DxgiBypassMode::kOverlay: state = 2; break;
-    case DxgiBypassMode::kIndependentFlip: state = 3; break;
-    case DxgiBypassMode::kUnknown:
-    default: state = 0; break;
-  }
-  s_dxgi_composition_state = static_cast<float>(state);
+  // Composition state is maintained by monitoring thread; just throttle returns
   
   // Colorspace/device enumeration moved to background monitoring thread
   

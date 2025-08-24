@@ -29,7 +29,7 @@ extern class BackgroundWindowManager g_backgroundWindowManager;
 
 // Input blocking state
 
-static std::atomic<bool> g_app_in_background = false;
+extern std::atomic<bool> g_app_in_background;
 
 // Main monitoring thread function
 void ContinuousMonitoringThread() {
@@ -124,6 +124,9 @@ void ContinuousMonitoringThread() {
                     case DxgiBypassMode::kUnknown:
                     default: state = 0; break;
                 }
+
+                // Update shared state for fast reads on present
+                s_dxgi_composition_state = static_cast<float>(state);
 
                 int last = g_comp_last_logged.load();
                 if (state != last) {

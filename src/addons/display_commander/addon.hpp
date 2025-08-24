@@ -62,6 +62,7 @@ std::vector<std::string> MakeMonitorLabels();
 // External declarations
 extern std::atomic<int> g_last_backbuffer_width;
 extern std::atomic<int> g_last_backbuffer_height;
+extern std::atomic<bool> g_app_in_background;
 
 // Enums
 enum class DxgiBypassMode : std::uint8_t { kUnknown, kComposed, kOverlay, kIndependentFlip };
