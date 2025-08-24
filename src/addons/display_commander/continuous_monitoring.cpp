@@ -97,6 +97,18 @@ void ContinuousMonitoringThread() {
             }
         }
 
+        // Update monitor labels cache periodically off the UI thread
+        {
+            // Refresh every 2 seconds to avoid excessive work
+            if ((seconds_counter % 2) == 0) {
+                auto labels = MakeMonitorLabels();
+                ::g_monitor_labels_lock.lock();
+                ::g_monitor_labels = std::move(labels);
+                ::g_monitor_labels_lock.unlock();
+                ::g_monitor_labels_need_update.store(false, std::memory_order_release);
+            }
+        }
+
         // BACKGROUND: Composition state logging and periodic device/colorspace refresh
         {
             auto* swapchain = g_last_swapchain_ptr.load();

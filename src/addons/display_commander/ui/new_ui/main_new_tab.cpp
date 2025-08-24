@@ -13,6 +13,7 @@
 #include <vector>
 #include <deque>
 #include <utility>
+#include <chrono>
 #include "../ui_display_tab.hpp"
 
 // Global variable declaration
@@ -26,6 +27,12 @@ extern const int HEIGHT_OPTIONS[];
 extern float s_background_feature_enabled;
 
 namespace ui::new_ui {
+
+// Cache for monitor information to avoid expensive operations every frame
+static std::vector<std::string> s_cached_monitor_labels;
+static std::vector<const char*> s_cached_monitor_c_labels;
+static std::chrono::steady_clock::time_point s_last_monitor_cache_update = std::chrono::steady_clock::now();
+static const std::chrono::milliseconds MONITOR_CACHE_TTL = std::chrono::milliseconds(1000); // Update cache every 1 second
 
 void InitMainNewTab() {
 
@@ -241,12 +248,34 @@ void DrawDisplaySettings() {
     }
     
     // Target Monitor dropdown
-    std::vector<std::string> monitor_labels = MakeMonitorLabels();
+    // Use cached monitor labels updated by continuous monitoring thread
+
+    std::vector<std::string> monitor_labels_local;
     std::vector<const char*> monitor_c_labels;
-    monitor_c_labels.reserve(monitor_labels.size());
-    for (const auto& label : monitor_labels) {
-        monitor_c_labels.push_back(label.c_str());
+    {
+        ::g_monitor_labels_lock.lock();
+        monitor_labels_local = ::g_monitor_labels; // copy to avoid lifetime issues
+        ::g_monitor_labels_lock.unlock();
+        monitor_c_labels.reserve(monitor_labels_local.size());
+        for (const auto& label : monitor_labels_local) {
+            monitor_c_labels.push_back(label.c_str());
+        }
     }
+    /*
+    // Fallback: if cache empty, build once synchronously (first-time UI open)
+    if (monitor_c_labels.empty()) {
+        auto labels = MakeMonitorLabels();
+        ::g_monitor_labels_lock.lock();
+        ::g_monitor_labels = labels;
+        monitor_labels_local = ::g_monitor_labels;
+        ::g_monitor_labels_lock.unlock();
+        monitor_c_labels.clear();
+        monitor_c_labels.reserve(monitor_labels_local.size());
+        for (const auto& label : monitor_labels_local) {
+            monitor_c_labels.push_back(label.c_str());
+        }
+        ::g_monitor_labels_need_update.store(false);
+    }*/
     int monitor_index = static_cast<int>(s_target_monitor_index);
     if (ImGui::Combo("Target Monitor", &monitor_index, monitor_c_labels.data(), static_cast<int>(monitor_c_labels.size()))) {
         s_target_monitor_index = static_cast<float>(monitor_index);

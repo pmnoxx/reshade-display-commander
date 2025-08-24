@@ -25,6 +25,26 @@
 #include "display_cache.hpp"
 
 
+// Lightweight spinlock for short critical sections
+class SpinLock {
+public:
+    void lock() {
+        while (_flag.test_and_set(std::memory_order_acquire)) {
+        }
+    }
+    void unlock() {
+        _flag.clear(std::memory_order_release);
+    }
+private:
+    std::atomic_flag _flag = ATOMIC_FLAG_INIT;
+};
+
+// Shared monitor labels cache (updated off the UI thread)
+extern SpinLock g_monitor_labels_lock;
+extern std::vector<std::string> g_monitor_labels;
+extern std::atomic<bool> g_monitor_labels_need_update;
+
+
 // WASAPI per-app volume control
 #include <mmdeviceapi.h>
 #include <audiopolicy.h>

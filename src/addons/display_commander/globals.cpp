@@ -41,7 +41,6 @@ float s_audio_mute = 0.f;
 
 // Performance: background FPS cap
 float s_fps_limit_background = 30.f;
-
 // FPS limit for foreground
 float s_fps_limit = 0.f;
 
@@ -104,7 +103,6 @@ float s_reflex_low_latency_mode = 0.f; // Low latency mode disabled by default
 float s_reflex_low_latency_boost = 0.f; // Boost disabled by default
 float s_reflex_use_markers = 0.f; // Use markers disabled by default
 float s_reflex_debug_output = 0.f; // Debug output disabled by default
-float s_enable_unstable_reshade_features = 0.f; // Unstable ReShade features disabled by default
 
 // Atomic variables
 std::atomic<int> g_comp_query_counter{0};
@@ -174,3 +172,11 @@ std::vector<MonitorInfo> g_monitors;
 reshade::api::color_space g_current_colorspace = reshade::api::color_space::unknown;
 std::string g_hdr10_override_status = "Not applied";
 std::string g_hdr10_override_timestamp = "Never";
+
+// Monitor labels cache (updated by background thread)
+SpinLock g_monitor_labels_lock;
+std::vector<std::string> g_monitor_labels;
+std::atomic<bool> g_monitor_labels_need_update{true};
+
+// Developer flag: enable unstable ReShade features
+float s_enable_unstable_reshade_features = 0.f;
