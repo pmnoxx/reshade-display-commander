@@ -216,7 +216,7 @@ void OnPresentUpdate(
   int c = ++g_comp_query_counter;
   
   // Call Reflex functions on EVERY frame (not throttled)
-  if (s_reflex_enabled >= 0.5f) {
+  if (s_reflex_enabled >= 0.5f && s_reflex_use_markers >= 0.5f) {
     extern std::unique_ptr<ReflexManager> g_reflexManager;
     extern std::atomic<bool> g_reflex_settings_changed;
     
@@ -324,24 +324,9 @@ void OnPresentUpdate(
   }
   s_dxgi_composition_state = static_cast<float>(state);
   
-  // Update colorspace info (throttled to avoid excessive calls)
-  if ((c % 30) == 0) {
-    g_current_colorspace = swapchain->get_color_space();
-    
-    // Enumerate DXGI devices during present (throttled to avoid excessive calls)
-    extern std::unique_ptr<DXGIDeviceInfoManager> g_dxgiDeviceInfoManager;
-    if (g_dxgiDeviceInfoManager && g_dxgiDeviceInfoManager->IsInitialized()) {
-      g_dxgiDeviceInfoManager->EnumerateDevicesOnPresent();
-    }
-  }
+  // Colorspace/device enumeration moved to background monitoring thread
   
-  int last = g_comp_last_logged.load();
-  if (state != last) {
-    g_comp_last_logged.store(state);
-    std::ostringstream oss;
-    oss << "DXGI Composition State (present): " << DxgiBypassModeToString(mode) << " (" << state << ")";
-    LogInfo(oss.str().c_str());
-  }
+  // Composition state change logging moved to background monitoring thread
 
 
 }

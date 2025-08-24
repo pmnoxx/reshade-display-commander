@@ -1,6 +1,7 @@
 #include "addon.hpp"
 #include "utils.hpp"
 #include "background_window.hpp"
+#include "dxgi/dxgi_device_info.hpp"
 #include <thread>
 #include <chrono>
 #include <sstream>
@@ -34,6 +35,7 @@ static std::atomic<bool> g_app_in_background = false;
 void ContinuousMonitoringThread() {
     LogInfo("Continuous monitoring thread started");
     
+    static int seconds_counter = 0;
     while (g_monitoring_thread_running.load()) {
         // Check if monitoring is still enabled
         if (s_continuous_monitoring_enabled < 0.5f) {
@@ -94,9 +96,45 @@ void ContinuousMonitoringThread() {
                 }
             }
         }
+
+        // BACKGROUND: Composition state logging and periodic device/colorspace refresh
+        {
+            auto* swapchain = g_last_swapchain_ptr.load();
+            if (swapchain != nullptr) {
+                // Compute DXGI composition state and log on change
+                DxgiBypassMode mode = GetIndependentFlipState(swapchain);
+                int state = 0;
+                switch (mode) {
+                    case DxgiBypassMode::kComposed: state = 1; break;
+                    case DxgiBypassMode::kOverlay: state = 2; break;
+                    case DxgiBypassMode::kIndependentFlip: state = 3; break;
+                    case DxgiBypassMode::kUnknown:
+                    default: state = 0; break;
+                }
+
+                int last = g_comp_last_logged.load();
+                if (state != last) {
+                    g_comp_last_logged.store(state);
+                    std::ostringstream oss;
+                    oss << "DXGI Composition State (background): " << DxgiBypassModeToString(mode) << " (" << state << ")";
+                    LogInfo(oss.str().c_str());
+                }
+
+                // Periodically refresh colorspace and enumerate devices (approx every 4 seconds)
+                if ((seconds_counter % 4) == 0) {
+                    g_current_colorspace = swapchain->get_color_space();
+
+                    extern std::unique_ptr<DXGIDeviceInfoManager> g_dxgiDeviceInfoManager;
+                    if (g_dxgiDeviceInfoManager && g_dxgiDeviceInfoManager->IsInitialized()) {
+                        g_dxgiDeviceInfoManager->EnumerateDevicesOnPresent();
+                    }
+                }
+            }
+        }
         
         // Sleep for 1 second
         std::this_thread::sleep_for(std::chrono::seconds(1));
+        ++seconds_counter;
     }
     
     LogInfo("Continuous monitoring thread stopped");
