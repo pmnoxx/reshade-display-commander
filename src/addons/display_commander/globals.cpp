@@ -167,6 +167,14 @@ std::atomic<int> g_last_backbuffer_height{0};
 // Background/foreground state (updated by monitoring thread)
 std::atomic<bool> g_app_in_background{false};
 
+// Performance stats (FPS/frametime) shared state
+std::atomic<uint32_t> g_perf_ring_head{0};
+PerfSample g_perf_ring[kPerfRingCapacity] = {};
+std::atomic<double> g_perf_time_seconds{0.0};
+std::atomic<bool> g_perf_reset_requested{false};
+std::string g_perf_text_shared;
+SpinLock g_perf_text_lock;
+
 // Vector variables
 std::vector<MonitorInfo> g_monitors;
 

@@ -147,6 +147,73 @@ void ContinuousMonitoringThread() {
                 }
             }
         }
+
+        // Aggregate FPS/frametime metrics and publish shared text once per second
+        {
+            extern std::atomic<uint32_t> g_perf_ring_head;
+            extern PerfSample g_perf_ring[kPerfRingCapacity];
+            extern std::atomic<double> g_perf_time_seconds;
+            extern std::atomic<bool> g_perf_reset_requested;
+            extern std::string g_perf_text_shared;
+
+            const double now_s = g_perf_time_seconds.load(std::memory_order_acquire);
+            const double window_start = now_s - 60.0;
+
+            // Handle reset: clear samples efficiently by advancing head and zeroing text
+            if (g_perf_reset_requested.exchange(false, std::memory_order_acq_rel)) {
+                g_perf_ring_head.store(0, std::memory_order_release);
+                g_perf_text_shared.clear();
+            }
+
+            // Copy recent samples into a local vector for computation
+            std::vector<float> fps_values;
+            fps_values.reserve(2048);
+            const uint32_t head = g_perf_ring_head.load(std::memory_order_acquire);
+            const uint32_t start = (head > kPerfRingCapacity) ? (head - static_cast<uint32_t>(kPerfRingCapacity)) : 0u;
+            for (uint32_t i = start; i < head; ++i) {
+                const PerfSample& s = g_perf_ring[i & (kPerfRingCapacity - 1)];
+                if (s.timestamp_seconds >= window_start && s.timestamp_seconds <= now_s && s.fps > 0.0f) {
+                    fps_values.push_back(s.fps);
+                }
+            }
+
+            float fps_display = 0.0f;
+            float frame_time_ms = 0.0f;
+            float one_percent_low = 0.0f;
+            float point_one_percent_low = 0.0f;
+
+            if (!fps_values.empty()) {
+                // Use median FPS as display to avoid spikes, fall back to mean
+                std::sort(fps_values.begin(), fps_values.end());
+                const size_t n = fps_values.size();
+                fps_display = (n % 2 == 1) ? fps_values[n / 2] : 0.5f * (fps_values[n / 2 - 1] + fps_values[n / 2]);
+                if (fps_display <= 0.0f) {
+                    double sum = 0.0;
+                    for (float v : fps_values) sum += v;
+                    fps_display = static_cast<float>(sum / static_cast<double>(n));
+                }
+                frame_time_ms = (fps_display > 0.0f) ? (1000.0f / fps_display) : 0.0f;
+
+                const size_t count_1 = (std::max<size_t>)(static_cast<size_t>(static_cast<double>(n) * 0.01), size_t(1));
+                const size_t count_01 = (std::max<size_t>)(static_cast<size_t>(static_cast<double>(n) * 0.001), size_t(1));
+                double sum_1 = 0.0;
+                for (size_t i = 0; i < count_1; ++i) sum_1 += static_cast<double>(fps_values[i]);
+                one_percent_low = static_cast<float>(sum_1 / static_cast<double>(count_1));
+                double sum_01 = 0.0;
+                for (size_t i = 0; i < count_01; ++i) sum_01 += static_cast<double>(fps_values[i]);
+                point_one_percent_low = static_cast<float>(sum_01 / static_cast<double>(count_01));
+            }
+
+            // Publish shared text (once per loop ~1s)
+            std::ostringstream fps_oss;
+            fps_oss << "FPS: " << std::fixed << std::setprecision(1) << fps_display
+                    << " (" << std::setprecision(1) << frame_time_ms << " ms)"
+                    << "   (1% Low: " << std::setprecision(1) << one_percent_low
+                    << ", 0.1% Low: " << std::setprecision(1) << point_one_percent_low << ") over past 60s";
+            ::g_perf_text_lock.lock();
+            g_perf_text_shared = fps_oss.str();
+            ::g_perf_text_lock.unlock();
+        }
         
         // Periodic display cache refresh off the UI thread
         {

@@ -242,6 +242,21 @@ extern std::atomic<float> g_max_latency_ms;
 extern std::atomic<uint64_t> g_current_frame;
 extern std::atomic<bool> g_reflex_active;
 
+// Performance stats (FPS/frametime) shared state
+struct PerfSample {
+    double timestamp_seconds;
+    float fps;
+};
+
+// Lock-free ring buffer for recent FPS samples (60s window at ~240 Hz -> 14400 max)
+constexpr size_t kPerfRingCapacity = 16384;
+extern std::atomic<uint32_t> g_perf_ring_head;
+extern PerfSample g_perf_ring[kPerfRingCapacity];
+extern std::atomic<double> g_perf_time_seconds;
+extern std::atomic<bool> g_perf_reset_requested;
+extern std::string g_perf_text_shared;
+extern SpinLock g_perf_text_lock;
+
 
 // Function declarations
 const char* DxgiBypassModeToString(DxgiBypassMode mode);
