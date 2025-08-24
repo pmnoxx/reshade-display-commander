@@ -660,6 +660,8 @@ void DrawImportantInfo() {
         static std::deque<std::pair<double, float>> fps_samples_60s; // (elapsed_time_s, fps)
         static double accumulated_time_s = 0.0;
         const float current_fps = (io.DeltaTime > 0.0f) ? (1.0f / io.DeltaTime) : 0.0f;
+        static std::string s_fps_text_cache;
+        static double s_last_fps_text_update = -1.0; // force immediate first update
 
         accumulated_time_s += static_cast<double>(io.DeltaTime);
 
@@ -673,39 +675,48 @@ void DrawImportantInfo() {
             fps_samples_60s.pop_front();
         }
 
-        const float fps_display = io.Framerate; // ImGui smoothed FPS
+        // Recompute displayed text at most once per second to reduce overhead
+        if (s_last_fps_text_update < 0.0 || (accumulated_time_s - s_last_fps_text_update) >= 1.0) {
+            const float fps_display = io.Framerate; // ImGui smoothed FPS
+            const float frame_time_ms = (fps_display > 0.0f) ? (1000.0f / fps_display) : 0.0f;
 
-        float one_percent_low = 0.0f;
-        float point_one_percent_low = 0.0f;
-        if (!fps_samples_60s.empty()) {
-            std::vector<float> values;
-            values.reserve(fps_samples_60s.size());
-            for (const auto &s : fps_samples_60s) values.push_back(s.second);
-            std::sort(values.begin(), values.end()); // ascending
+            float one_percent_low = 0.0f;
+            float point_one_percent_low = 0.0f;
+            if (!fps_samples_60s.empty()) {
+                std::vector<float> values;
+                values.reserve(fps_samples_60s.size());
+                for (const auto &s : fps_samples_60s) values.push_back(s.second);
+                std::sort(values.begin(), values.end()); // ascending
 
-            const size_t size = values.size();
-            const size_t count_1 = (std::max<size_t>)(static_cast<size_t>(static_cast<double>(size) * 0.01), 1);
-            const size_t count_01 = (std::max<size_t>)(static_cast<size_t>(static_cast<double>(size) * 0.001), 1);
+                const size_t size = values.size();
+                const size_t count_1 = (std::max<size_t>)(static_cast<size_t>(static_cast<double>(size) * 0.01), 1);
+                const size_t count_01 = (std::max<size_t>)(static_cast<size_t>(static_cast<double>(size) * 0.001), 1);
 
-            double sum_1 = 0.0;
-            for (size_t i = 0; i < count_1; ++i) sum_1 += static_cast<double>(values[i]);
-            one_percent_low = static_cast<float>(sum_1 / static_cast<double>(count_1));
+                double sum_1 = 0.0;
+                for (size_t i = 0; i < count_1; ++i) sum_1 += static_cast<double>(values[i]);
+                one_percent_low = static_cast<float>(sum_1 / static_cast<double>(count_1));
 
-            double sum_01 = 0.0;
-            for (size_t i = 0; i < count_01; ++i) sum_01 += static_cast<double>(values[i]);
-            point_one_percent_low = static_cast<float>(sum_01 / static_cast<double>(count_01));
+                double sum_01 = 0.0;
+                for (size_t i = 0; i < count_01; ++i) sum_01 += static_cast<double>(values[i]);
+                point_one_percent_low = static_cast<float>(sum_01 / static_cast<double>(count_01));
+            }
+
+            std::ostringstream fps_oss;
+            fps_oss << "FPS: " << std::fixed << std::setprecision(1) << fps_display
+                    << " (" << std::setprecision(1) << frame_time_ms << " ms)"
+                    << "   (1% Low: " << std::setprecision(1) << one_percent_low
+                    << ", 0.1% Low: " << std::setprecision(1) << point_one_percent_low << ") over past 60s";
+            s_fps_text_cache = fps_oss.str();
+            s_last_fps_text_update = accumulated_time_s;
         }
 
-        std::ostringstream fps_oss;
-        fps_oss << "FPS: " << std::fixed << std::setprecision(1) << fps_display
-                << "   (1% Low: " << std::setprecision(1) << one_percent_low
-                << ", 0.1% Low: " << std::setprecision(1) << point_one_percent_low << ") over past 60s";
-        ImGui::TextUnformatted(fps_oss.str().c_str());
+        ImGui::TextUnformatted(s_fps_text_cache.c_str());
 
         ImGui::SameLine();
         if (ImGui::Button("Reset 60s Stats")) {
             fps_samples_60s.clear();
             accumulated_time_s = 0.0;
+            s_last_fps_text_update = -1.0; // trigger immediate refresh next frame
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Reset the rolling 60-second FPS statistics.");
