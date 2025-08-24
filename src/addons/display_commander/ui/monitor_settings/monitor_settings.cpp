@@ -303,38 +303,7 @@ void HandlePendingConfirmationUI() {
 
 // Handle display cache refresh logic (throttled by time)
 void HandleDisplayCacheRefresh() {
-    // Refresh cache at most every 5 seconds (instead of every 60 frames)
-    using clock = std::chrono::steady_clock;
-    static clock::time_point last_refresh_time = clock::now();
-    const auto now = clock::now();
-    const auto refresh_interval = std::chrono::seconds(5);
-
-    if ((now - last_refresh_time) < refresh_interval) {
-        return;
-    }
-
-    last_refresh_time = now;
-    display_cache::g_displayCache.Refresh();
-
-    // Debug (throttled): Log current display info after refresh occasionally
-    static int debug_log_counter = 0;
-    if ((++debug_log_counter % 6) == 0) { // roughly every 30 seconds
-        HWND hwnd = g_last_swapchain_hwnd.load();
-        if (hwnd) {
-            HMONITOR current_monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
-            if (current_monitor) {
-                const auto* display = display_cache::g_displayCache.GetDisplayByHandle(current_monitor);
-                if (display) {
-                    std::ostringstream debug_oss;
-                    debug_oss << "Cache refreshed - Current: " << display->GetCurrentResolutionString()
-                              << " @ " << display->GetCurrentRefreshRateString()
-                              << " [Raw: " << display->current_refresh_rate.numerator << "/"
-                              << display->current_refresh_rate.denominator << "]";
-                    LogDebug(debug_oss.str().c_str());
-                }
-            }
-        }
-    }
+    // No-op: refresh is now performed by ContinuousMonitoringThread off the UI thread
 }
 
 // Handle auto-detection of current display settings

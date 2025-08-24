@@ -36,6 +36,7 @@ void ContinuousMonitoringThread() {
     LogInfo("Continuous monitoring thread started");
     
     static int seconds_counter = 0;
+    auto last_cache_refresh = std::chrono::steady_clock::now();
     while (g_monitoring_thread_running.load()) {
         // Check if monitoring is still enabled
         if (s_continuous_monitoring_enabled < 0.5f) {
@@ -141,6 +142,15 @@ void ContinuousMonitoringThread() {
                         g_dxgiDeviceInfoManager->EnumerateDevicesOnPresent();
                     }
                 }
+            }
+        }
+        
+        // Periodic display cache refresh off the UI thread
+        {
+            auto now = std::chrono::steady_clock::now();
+            if (now - last_cache_refresh >= std::chrono::seconds(5)) {
+                display_cache::g_displayCache.Refresh();
+                last_cache_refresh = now;
             }
         }
         

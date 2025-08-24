@@ -2,6 +2,7 @@
 
 #include <windows.h>
 #include <vector>
+#include <atomic>
 #include <string>
 #include <map>
 #include <memory>
@@ -288,7 +289,8 @@ struct DisplayInfo {
 class DisplayCache {
 private:
     std::vector<std::unique_ptr<DisplayInfo>> displays;
-    bool is_initialized;
+    mutable std::atomic_flag spinlock = ATOMIC_FLAG_INIT;
+    std::atomic<bool> is_initialized;
     
 public:
     DisplayCache() : is_initialized(false) {}
@@ -300,13 +302,10 @@ public:
     bool Refresh();
     
     // Get number of displays
-    size_t GetDisplayCount() const { return displays.size(); }
+    size_t GetDisplayCount() const;
     
     // Get display by index
-    const DisplayInfo* GetDisplay(size_t index) const {
-        if (index >= displays.size()) return nullptr;
-        return displays[index].get();
-    }
+    const DisplayInfo* GetDisplay(size_t index) const;
     
     // Get display by monitor handle
     const DisplayInfo* GetDisplayByHandle(HMONITOR monitor) const;
@@ -337,13 +336,19 @@ public:
     bool GetSupportedModes(size_t display_index, std::vector<Resolution>& resolutions) const;
     
     // Check if cache is initialized
-    bool IsInitialized() const { return is_initialized; }
+    bool IsInitialized() const { return is_initialized.load(std::memory_order_acquire); }
     
     // Clear the cache
     void Clear() {
         displays.clear();
-        is_initialized = false;
+        is_initialized.store(false, std::memory_order_release);
     }
+
+    // Swap internal data from another cache (used for atomic-like updates)
+    void SwapFrom(DisplayCache&& other);
+
+    // Copy a display snapshot by index; returns false if out of range
+    bool CopyDisplay(size_t index, DisplayInfo &out) const;
 };
 
 // Global instance
