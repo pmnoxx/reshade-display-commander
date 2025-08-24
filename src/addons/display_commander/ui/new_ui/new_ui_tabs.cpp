@@ -6,6 +6,7 @@
 #include "main_new_tab.hpp"
 #include "../../addon.hpp"
 
+
 namespace ui::new_ui {
 
 // Global tab manager instance

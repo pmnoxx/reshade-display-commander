@@ -121,6 +121,7 @@ extern float s_reflex_enabled;
 extern float s_reflex_low_latency_mode;
 extern float s_reflex_low_latency_boost;
 extern float s_reflex_use_markers;
+extern float s_enable_unstable_reshade_features;
 
 extern float s_windowed_width;
 extern float s_windowed_height;

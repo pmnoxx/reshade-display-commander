@@ -38,6 +38,9 @@ public:
     ui::new_ui::BoolSetting reflex_enabled;
     ui::new_ui::BoolSetting reflex_debug_output;
     
+    // Experimental/Unstable features toggle
+    ui::new_ui::BoolSetting enable_unstable_reshade_features;
+    
     // Sync Interval Settings
     ui::new_ui::ComboSetting sync_interval;
     

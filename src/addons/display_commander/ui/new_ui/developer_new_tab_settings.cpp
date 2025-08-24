@@ -17,6 +17,7 @@ extern float s_reflex_enabled;
 extern float s_reflex_debug_output;
 extern float s_remove_top_bar;
 extern float s_sync_interval;
+extern float s_enable_unstable_reshade_features;
 
 namespace ui::new_ui {
 
@@ -36,6 +37,7 @@ DeveloperTabSettings::DeveloperTabSettings()
     , reflex_enabled("ReflexEnabled", true, "DisplayCommanderNew")
     , reflex_debug_output("ReflexDebugOutput", false, "DisplayCommanderNew")
     , sync_interval("SyncInterval", 0, {"Application-Controlled", "No-VSync (0)", "V-Sync (1)", "V-Sync 2x (2)", "V-Sync 3x (3)", "V-Sync 4x (4)"}, "DisplayCommanderNew")
+    , enable_unstable_reshade_features("EnableUnstableReShadeFeatures", false, "DisplayCommanderNew")
 {
 }
 
@@ -54,6 +56,7 @@ void DeveloperTabSettings::LoadAll() {
     reflex_enabled.Load();
     reflex_debug_output.Load();
     sync_interval.Load();
+    enable_unstable_reshade_features.Load();
     
     // Update global variables to maintain compatibility
     s_prevent_fullscreen = prevent_fullscreen.GetValue() ? 1.0f : 0.0f;
@@ -70,6 +73,7 @@ void DeveloperTabSettings::LoadAll() {
     s_reflex_enabled = reflex_enabled.GetValue() ? 1.0f : 0.0f;
     s_reflex_debug_output = reflex_debug_output.GetValue() ? 1.0f : 0.0f;
     s_sync_interval = static_cast<float>(sync_interval.GetValue());
+    s_enable_unstable_reshade_features = enable_unstable_reshade_features.GetValue() ? 1.0f : 0.0f;
 }
 
 void DeveloperTabSettings::SaveAll() {
@@ -86,6 +90,7 @@ void DeveloperTabSettings::SaveAll() {
     reflex_enabled.Save();
     reflex_debug_output.Save();
     sync_interval.Save();
+    enable_unstable_reshade_features.Save();
 }
 
 std::vector<ui::new_ui::SettingBase*> DeveloperTabSettings::GetAllSettings() {
@@ -103,7 +108,8 @@ std::vector<ui::new_ui::SettingBase*> DeveloperTabSettings::GetAllSettings() {
         &nvapi_force_hdr10,
         &reflex_enabled,
         &reflex_debug_output,
-        &sync_interval
+        &sync_interval,
+        &enable_unstable_reshade_features
     };
 }
 
