@@ -95,6 +95,17 @@ GitHub Actions builds x64 and x86 on pushes and PRs and uploads the resulting `.
 - "NVAPI libs not found ...": Optional; only NVAPI-based features will be unavailable.
 - "No addon files found" after build: Ensure Release config and correct architecture; check `build/` or `build32/Release/` for the expected output name.
 
+## Support
+
+Need help? Check out our [Support Guide](SUPPORT.md) for detailed information on getting assistance.
+
+**Quick Support Links:**
+- **HDR Den Discord**: [Join our community](https://discord.com/invite/WJ9YZctPND)
+- **Support Thread**: [Display Commander Support](https://discord.com/channels/1161035767917850784/1403983735031857162)
+- **GitHub Issues**: [Report bugs or request features](https://github.com/pmnoxx/reshade-display-commander/issues)
+
+The HDR Den Discord community is the best place to get real-time help, discuss features, and connect with other users.
+
 ## Credits
 
 - ReShade and its addon SDK
