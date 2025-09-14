@@ -280,12 +280,8 @@ void DualSenseHIDWrapper::UpdateDeviceFromHID(DualSenseDevice& device) {
                 }
             }
 
-            // Process the input report based on connection type
-            if (device.is_wireless) {
-                ProcessBluetoothInputReport(device, inputReport, bytesRead);
-            } else {
-                ProcessUSBInputReport(device, inputReport, bytesRead);
-            }
+            // Process the input report using Special-K format
+            ParseSpecialKDualSenseData(device, inputReport, bytesRead);
 
             // Update packet number for change detection
             device.current_state.dwPacketNumber++;
@@ -516,6 +512,112 @@ void DualSenseHIDWrapper::ParseDualSenseTriggers(DualSenseDevice& device, const 
     // Convert to 8-bit values (0-255) for XInput
     device.current_state.Gamepad.bLeftTrigger = static_cast<BYTE>(leftTrigger >> 8);
     device.current_state.Gamepad.bRightTrigger = static_cast<BYTE>(rightTrigger >> 8);
+}
+
+// Special-K format parsing methods
+void DualSenseHIDWrapper::ParseSpecialKDualSenseData(DualSenseDevice& device, const BYTE* inputReport, DWORD bytesRead) {
+    // Check if we have enough data for the Special-K format
+    // USB: 64 bytes (1 byte report ID + 63 bytes data)
+    // Bluetooth: 78 bytes (2 bytes report ID + sequence + 63 bytes data)
+    if ((device.is_wireless && bytesRead < 78) || (!device.is_wireless && bytesRead < 64)) {
+        return;
+    }
+
+    // Store previous data
+    device.sk_dualsense_data_prev = device.sk_dualsense_data;
+
+    // Determine data offset based on connection type
+    const BYTE* data_start = inputReport;
+    if (device.is_wireless) {
+        // Bluetooth format: skip report ID (0x31) and sequence number
+        data_start = inputReport + 2;
+    } else {
+        // USB format: skip report ID (0x01)
+        data_start = inputReport + 1;
+    }
+
+    // Direct memory mapping using bit union - much cleaner and more efficient!
+    // This directly maps the raw HID data to our structure
+    std::memcpy(&device.sk_dualsense_data, data_start, sizeof(SK_HID_DualSense_GetStateData));
+
+    // Convert to XInput format
+    ConvertSpecialKToXInput(device);
+
+    // Update device state
+    UpdateSpecialKData(device, device.sk_dualsense_data);
+}
+
+void DualSenseHIDWrapper::ConvertSpecialKToXInput(DualSenseDevice& device) {
+    const auto& sk_data = device.sk_dualsense_data;
+    auto& xinput_state = device.current_state.Gamepad;
+
+    // Clear previous button state
+    xinput_state.wButtons = 0;
+
+    // Map DualSense buttons to XInput buttons
+    if (sk_data.ButtonL1) xinput_state.wButtons |= XINPUT_GAMEPAD_LEFT_SHOULDER;
+    if (sk_data.ButtonR1) xinput_state.wButtons |= XINPUT_GAMEPAD_RIGHT_SHOULDER;
+    if (sk_data.ButtonL3) xinput_state.wButtons |= XINPUT_GAMEPAD_LEFT_THUMB;
+    if (sk_data.ButtonR3) xinput_state.wButtons |= XINPUT_GAMEPAD_RIGHT_THUMB;
+    if (sk_data.ButtonCreate) xinput_state.wButtons |= XINPUT_GAMEPAD_BACK;
+    if (sk_data.ButtonOptions) xinput_state.wButtons |= XINPUT_GAMEPAD_START;
+    if (sk_data.ButtonHome) xinput_state.wButtons |= 0x0400; // PS button (custom constant)
+
+    // Face buttons (mapped to XInput layout)
+    if (sk_data.ButtonSquare) xinput_state.wButtons |= XINPUT_GAMEPAD_X;    // Square -> X
+    if (sk_data.ButtonCross) xinput_state.wButtons |= XINPUT_GAMEPAD_A;     // Cross -> A
+    if (sk_data.ButtonCircle) xinput_state.wButtons |= XINPUT_GAMEPAD_B;    // Circle -> B
+    if (sk_data.ButtonTriangle) xinput_state.wButtons |= XINPUT_GAMEPAD_Y;  // Triangle -> Y
+
+    // D-pad mapping
+    switch (sk_data.DPad) {
+        case Direction::Up: xinput_state.wButtons |= XINPUT_GAMEPAD_DPAD_UP; break;
+        case Direction::UpRight: xinput_state.wButtons |= XINPUT_GAMEPAD_DPAD_UP | XINPUT_GAMEPAD_DPAD_RIGHT; break;
+        case Direction::Right: xinput_state.wButtons |= XINPUT_GAMEPAD_DPAD_RIGHT; break;
+        case Direction::DownRight: xinput_state.wButtons |= XINPUT_GAMEPAD_DPAD_DOWN | XINPUT_GAMEPAD_DPAD_RIGHT; break;
+        case Direction::Down: xinput_state.wButtons |= XINPUT_GAMEPAD_DPAD_DOWN; break;
+        case Direction::DownLeft: xinput_state.wButtons |= XINPUT_GAMEPAD_DPAD_DOWN | XINPUT_GAMEPAD_DPAD_LEFT; break;
+        case Direction::Left: xinput_state.wButtons |= XINPUT_GAMEPAD_DPAD_LEFT; break;
+        case Direction::UpLeft: xinput_state.wButtons |= XINPUT_GAMEPAD_DPAD_UP | XINPUT_GAMEPAD_DPAD_LEFT; break;
+        case Direction::None: // neutral (no buttons)
+        default: break;
+    }
+
+    // Analog sticks - convert from 8-bit to 16-bit signed values
+    // DualSense uses 0-255 range, XInput uses -32768 to 32767
+    xinput_state.sThumbLX = static_cast<SHORT>((sk_data.LeftStickX - 128) * 256);
+    xinput_state.sThumbLY = static_cast<SHORT>((sk_data.LeftStickY - 128) * 256);
+    xinput_state.sThumbRX = static_cast<SHORT>((sk_data.RightStickX - 128) * 256);
+    xinput_state.sThumbRY = static_cast<SHORT>((sk_data.RightStickY - 128) * 256);
+
+    // Triggers - convert from 8-bit to 8-bit (already in correct range)
+    xinput_state.bLeftTrigger = sk_data.TriggerLeft;
+    xinput_state.bRightTrigger = sk_data.TriggerRight;
+}
+
+void DualSenseHIDWrapper::UpdateSpecialKData(DualSenseDevice& device, const SK_HID_DualSense_GetStateData& new_data) {
+    // Update battery information if available
+    if (new_data.PowerPercent <= 10) { // Valid range is 0-10
+        device.battery_info_valid = true;
+        device.battery_level = new_data.PowerPercent * 10; // Convert to percentage (0-100)
+        device.battery_type = static_cast<BYTE>(new_data.PowerState);
+    }
+
+    // Update device features based on Special-K data
+    device.has_microphone = (new_data.PluggedMic || new_data.PluggedExternalMic);
+    device.has_speaker = true; // DualSense always has speaker
+    device.has_touchpad = true; // DualSense always has touchpad
+    device.has_adaptive_triggers = true; // DualSense always has adaptive triggers
+
+    // Log additional information if available
+    static int debug_count = 0;
+    if (debug_count++ < 3) {
+        LogInfo("DualSense Special-K data - Battery: %d%%, Mic: %s, Headphones: %s, USB: %s",
+               device.battery_level,
+               device.has_microphone ? "Yes" : "No",
+               new_data.PluggedHeadphones ? "Yes" : "No",
+               new_data.PluggedUsbData ? "Yes" : "No");
+    }
 }
 
 } // namespace display_commander::dualsense

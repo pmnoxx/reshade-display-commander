@@ -28,7 +28,6 @@ struct DualSenseSharedState {
     std::atomic<uint64_t> trigger_events{0};
 
     // Debug settings
-    std::atomic<int> debug_offset{0};
     std::atomic<uint64_t> touchpad_events{0};
 
     // Settings
@@ -86,11 +85,16 @@ private:
     void DrawRawButtonStates(const DualSenseDeviceInfo& device);
     void DrawRawStickStates(const DualSenseDeviceInfo& device);
     void DrawRawTriggerStates(const DualSenseDeviceInfo& device);
+    void DrawSpecialKData(const DualSenseDeviceInfo& device);
 
     // Helper functions
     std::string GetButtonName(WORD button) const;
     std::string GetDeviceStatus(const DualSenseDeviceInfo& device) const;
     bool IsButtonPressed(WORD buttons, WORD button) const;
+
+    // Special-K debug helper functions
+    void DrawSpecialKFieldRow(const char* fieldName, int offset, int size, const std::vector<BYTE>& inputReport, const DualSenseDeviceInfo& device, const char* description = nullptr);
+    void DrawSpecialKBitFieldRow(const char* fieldName, int byteOffset, int bitOffset, int bitCount, const std::vector<BYTE>& inputReport, const DualSenseDeviceInfo& device, const char* description = nullptr);
     std::string GetConnectionTypeString(const DualSenseDeviceInfo& device) const;
     std::string GetDeviceTypeString(const DualSenseDeviceInfo& device) const;
     std::string GetHIDTypeString(int hid_type) const;

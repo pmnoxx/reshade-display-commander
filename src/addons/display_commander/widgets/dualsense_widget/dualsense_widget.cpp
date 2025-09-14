@@ -352,7 +352,7 @@ void DualSenseWidget::DrawDeviceDetails(const DualSenseDeviceInfo& device) {
 
     DrawInputReport(device);
 
-    // Raw input parsing with debug offset
+    // Raw input parsing
     DrawRawButtonStates(device);
     ImGui::Spacing();
     DrawRawStickStates(device);
@@ -363,43 +363,8 @@ void DualSenseWidget::DrawDeviceDetails(const DualSenseDeviceInfo& device) {
 
 void DualSenseWidget::DrawButtonStates(const DualSenseDeviceInfo& device) {
     if (ImGui::CollapsingHeader("Buttons", ImGuiTreeNodeFlags_DefaultOpen)) {
-        // Parse buttons from input report with debug offset
-        WORD buttons = 0;
-        int offset = g_shared_state->debug_offset.load();
-
-        if (device.hid_device && device.hid_device->input_report.size() > 0) {
-            const auto& inputReport = device.hid_device->input_report;
-
-            // Buttons 1 (with offset)
-            if (1 + offset < inputReport.size()) {
-                BYTE button1 = inputReport[1 + offset];
-                if (button1 & 0x10) buttons |= XINPUT_GAMEPAD_LEFT_SHOULDER;  // L1
-                if (button1 & 0x20) buttons |= XINPUT_GAMEPAD_RIGHT_SHOULDER; // R1
-                if (button1 & 0x01) buttons |= XINPUT_GAMEPAD_X;              // Square -> X
-                if (button1 & 0x02) buttons |= XINPUT_GAMEPAD_A;              // Cross -> A
-                if (button1 & 0x04) buttons |= XINPUT_GAMEPAD_B;              // Circle -> B
-                if (button1 & 0x08) buttons |= XINPUT_GAMEPAD_Y;              // Triangle -> Y
-            }
-
-            // Buttons 2 (with offset)
-            if (2 + offset < inputReport.size()) {
-                BYTE button2 = inputReport[2 + offset];
-                if (button2 & 0x01) buttons |= XINPUT_GAMEPAD_BACK;           // Share
-                if (button2 & 0x02) buttons |= XINPUT_GAMEPAD_START;          // Options
-                if (button2 & 0x04) buttons |= XINPUT_GAMEPAD_LEFT_THUMB;     // L3
-                if (button2 & 0x08) buttons |= XINPUT_GAMEPAD_RIGHT_THUMB;    // R3
-                if (button2 & 0x10) buttons |= 0x0400;                        // PS (custom constant)
-            }
-
-            // D-Pad (with offset)
-            if (3 + offset < inputReport.size()) {
-                BYTE dpad = inputReport[3 + offset] & 0x0F;
-                buttons |= dpad; // D-Pad is already in the correct format
-            }
-        } else {
-            // Fallback to XInput data if no input report
-            buttons = device.current_state.Gamepad.wButtons;
-        }
+        // Use XInput state (converted from Special-K DualSense data)
+        WORD buttons = device.current_state.Gamepad.wButtons;
 
         // Create a grid of buttons
         const struct {
@@ -422,7 +387,6 @@ void DualSenseWidget::DrawButtonStates(const DualSenseDeviceInfo& device) {
             {XINPUT_GAMEPAD_DPAD_RIGHT, "D-Right"},
         };
 
-        ImGui::Text("Using offset: %d", offset);
         for (size_t i = 0; i < sizeof(button_list) / sizeof(button_list[0]); i += 2) {
             if (i + 1 < sizeof(button_list) / sizeof(button_list[0])) {
                 // Draw two buttons per row
@@ -452,32 +416,12 @@ void DualSenseWidget::DrawButtonStates(const DualSenseDeviceInfo& device) {
 
 void DualSenseWidget::DrawStickStates(const DualSenseDeviceInfo& device) {
     if (ImGui::CollapsingHeader("Analog Sticks", ImGuiTreeNodeFlags_DefaultOpen)) {
-        int offset = g_shared_state->debug_offset.load();
 
-        // Parse stick data from input report with debug offset
-        SHORT leftX = 0, leftY = 0, rightX = 0, rightY = 0;
-
-        if (device.hid_device && device.hid_device->input_report.size() > 0) {
-            const auto& inputReport = device.hid_device->input_report;
-
-            // Left stick (with offset)
-            if (4 + offset + 1 < inputReport.size()) {
-                leftX = static_cast<SHORT>((inputReport[5 + offset] << 8) | inputReport[4 + offset]);
-                leftY = static_cast<SHORT>((inputReport[7 + offset] << 8) | inputReport[6 + offset]);
-            }
-
-            // Right stick (with offset)
-            if (8 + offset + 1 < inputReport.size()) {
-                rightX = static_cast<SHORT>((inputReport[9 + offset] << 8) | inputReport[8 + offset]);
-                rightY = static_cast<SHORT>((inputReport[11 + offset] << 8) | inputReport[10 + offset]);
-            }
-        } else {
-            // Fallback to XInput data if no input report
-            leftX = device.current_state.Gamepad.sThumbLX;
-            leftY = device.current_state.Gamepad.sThumbLY;
-            rightX = device.current_state.Gamepad.sThumbRX;
-            rightY = device.current_state.Gamepad.sThumbRY;
-        }
+        // Use XInput state (converted from Special-K DualSense data)
+        SHORT leftX = device.current_state.Gamepad.sThumbLX;
+        SHORT leftY = device.current_state.Gamepad.sThumbLY;
+        SHORT rightX = device.current_state.Gamepad.sThumbRX;
+        SHORT rightY = device.current_state.Gamepad.sThumbRY;
 
         // Left stick
         ImGui::Text("Left Stick:");
@@ -532,34 +476,15 @@ void DualSenseWidget::DrawStickStates(const DualSenseDeviceInfo& device) {
 
         ImGui::Dummy(canvas_size);
 
-        ImGui::Text("Using offset: %d", offset);
     }
 }
 
 void DualSenseWidget::DrawTriggerStates(const DualSenseDeviceInfo& device) {
     if (ImGui::CollapsingHeader("Triggers", ImGuiTreeNodeFlags_DefaultOpen)) {
-        int offset = g_shared_state->debug_offset.load();
 
-        // Parse trigger data from input report with debug offset
-        USHORT leftTrigger = 0, rightTrigger = 0;
-
-        if (device.hid_device && device.hid_device->input_report.size() > 0) {
-            const auto& inputReport = device.hid_device->input_report;
-
-            // Left trigger (with offset)
-            if (12 + offset + 1 < inputReport.size()) {
-                leftTrigger = static_cast<USHORT>((inputReport[13 + offset] << 8) | inputReport[12 + offset]);
-            }
-
-            // Right trigger (with offset)
-            if (14 + offset + 1 < inputReport.size()) {
-                rightTrigger = static_cast<USHORT>((inputReport[15 + offset] << 8) | inputReport[14 + offset]);
-            }
-        } else {
-            // Fallback to XInput data if no input report
-            leftTrigger = device.current_state.Gamepad.bLeftTrigger;
-            rightTrigger = device.current_state.Gamepad.bRightTrigger;
-        }
+        // Use XInput state (converted from Special-K DualSense data)
+        USHORT leftTrigger = device.current_state.Gamepad.bLeftTrigger;
+        USHORT rightTrigger = device.current_state.Gamepad.bRightTrigger;
 
         // Left trigger
         ImGui::Text("Left Trigger: %u/65535 (%.1f%%)",
@@ -579,7 +504,6 @@ void DualSenseWidget::DrawTriggerStates(const DualSenseDeviceInfo& device) {
         float right_trigger_norm = static_cast<float>(rightTrigger) / 65535.0f;
         ImGui::ProgressBar(right_trigger_norm, ImVec2(-1, 0), "");
 
-        ImGui::Text("Using offset: %d", offset);
     }
 }
 
@@ -783,21 +707,9 @@ void DrawDualSenseWidget() {
 }
 
 void DualSenseWidget::DrawInputReport(const DualSenseDeviceInfo& device) {
-    if (!ImGui::CollapsingHeader("Input Report Debug", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (!ImGui::CollapsingHeader("Input Report Debug (Special-K Format)", ImGuiTreeNodeFlags_DefaultOpen)) {
         return;
     }
-
-    // Debug offset control
-    ImGui::Text("Debug Offset:");
-    int offset = g_shared_state->debug_offset.load();
-    if (ImGui::SliderInt("##debug_offset", &offset, 0, 20)) {
-        g_shared_state->debug_offset.store(offset);
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("Reset")) {
-        g_shared_state->debug_offset.store(0);
-    }
-    ImGui::Text("Using offset: %d (accessing inputReport[2 + %d])", offset, offset);
 
     // Get the current input report from the device
     if (device.hid_device && device.hid_device->input_report.size() > 0) {
@@ -806,83 +718,118 @@ void DualSenseWidget::DrawInputReport(const DualSenseDeviceInfo& device) {
 
         ImGui::Text("Report Size: %d bytes", reportSize);
         ImGui::Text("Connection: %s", device.connection_type.c_str());
+        ImGui::Text("Special-K Data Size: %zu bytes", sizeof(SK_HID_DualSense_GetStateData));
 
-        // Show raw bytes in a table format
-        if (ImGui::BeginTable("InputReport", 8, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
-            ImGui::TableSetupColumn("Offset");
-            ImGui::TableSetupColumn("Byte");
-            ImGui::TableSetupColumn("Hex");
-            ImGui::TableSetupColumn("Binary");
-            ImGui::TableSetupColumn("Description");
-            ImGui::TableSetupColumn("Value");
-            ImGui::TableSetupColumn("Notes");
-            ImGui::TableSetupColumn("Status");
-            ImGui::TableHeadersRow();
+        // Determine data offset based on connection type
+        int dataOffset = device.is_wireless ? 2 : 1; // Skip report ID and sequence for BT
+        int dataSize = device.is_wireless ? 63 : 63; // Special-K data is always 63 bytes
 
-            for (int i = 0; i < reportSize; i++) {
-                ImGui::TableNextRow();
-
-                // Offset
-                ImGui::TableSetColumnIndex(0);
-                ImGui::Text("%02d", i);
-
-                // Byte value
-                ImGui::TableSetColumnIndex(1);
-                ImGui::Text("%d", inputReport[i]);
-
-                // Hex value
-                ImGui::TableSetColumnIndex(2);
-                ImGui::Text("0x%02X", inputReport[i]);
-
-                // Binary value
-                ImGui::TableSetColumnIndex(3);
-                std::string binary = "";
-                for (int bit = 7; bit >= 0; bit--) {
-                    binary += (inputReport[i] & (1 << bit)) ? "1" : "0";
-                    if (bit == 4) binary += " "; // Add space for readability
-                }
-                ImGui::Text("%s", binary.c_str());
-
-                // Description based on position
-                ImGui::TableSetColumnIndex(4);
-                std::string description = GetByteDescription(i, device.connection_type);
-                ImGui::Text("%s", description.c_str());
-
-                // Value interpretation
-                ImGui::TableSetColumnIndex(5);
-                std::string value = GetByteValue(inputReport, i, device.connection_type);
-                ImGui::Text("%s", value.c_str());
-
-                // Notes
-                ImGui::TableSetColumnIndex(6);
-                std::string notes = GetByteNotes(i, device.connection_type);
-                ImGui::Text("%s", notes.c_str());
-
-                // Status (highlight offset bytes)
-                ImGui::TableSetColumnIndex(7);
-                if (i == 2 + offset) {
-                    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "OFFSET");
-                } else if (i >= 2 && i < 2 + offset) {
-                    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "SKIP");
-                } else {
-                    ImGui::Text("");
-                }
-            }
-            ImGui::EndTable();
-        }
-
-        // Show specific data at offset
-        if (2 + offset < reportSize) {
+        if (reportSize >= dataOffset + dataSize) {
+            ImGui::Text("Special-K Data Offset: %d", dataOffset);
             ImGui::Spacing();
-            ImGui::Text("Data at offset %d (inputReport[2 + %d]):", offset, offset);
-            int dataOffset = 2 + offset;
-            ImGui::Text("Byte: %d (0x%02X)", inputReport[dataOffset], inputReport[dataOffset]);
 
-            // Show as 16-bit value if we have enough bytes
-            if (dataOffset + 1 < reportSize) {
-                SHORT value16 = static_cast<SHORT>((inputReport[dataOffset + 1] << 8) | inputReport[dataOffset]);
-                ImGui::Text("16-bit: %d (0x%04X)", value16, value16);
+            // Show Special-K fields in a table format
+            if (ImGui::BeginTable("SpecialKReport", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
+                ImGui::TableSetupColumn("Field Name");
+                ImGui::TableSetupColumn("Offset");
+                ImGui::TableSetupColumn("Size");
+                ImGui::TableSetupColumn("Raw Value");
+                ImGui::TableSetupColumn("Interpreted Value");
+                ImGui::TableSetupColumn("Description");
+                ImGui::TableHeadersRow();
+
+                // Display Special-K fields
+                DrawSpecialKFieldRow("LeftStickX", dataOffset + 0, 1, inputReport, device);
+                DrawSpecialKFieldRow("LeftStickY", dataOffset + 1, 1, inputReport, device);
+                DrawSpecialKFieldRow("RightStickX", dataOffset + 2, 1, inputReport, device);
+                DrawSpecialKFieldRow("RightStickY", dataOffset + 3, 1, inputReport, device);
+                DrawSpecialKFieldRow("TriggerLeft", dataOffset + 4, 1, inputReport, device);
+                DrawSpecialKFieldRow("TriggerRight", dataOffset + 5, 1, inputReport, device);
+                DrawSpecialKFieldRow("SeqNo", dataOffset + 6, 1, inputReport, device);
+
+                // Byte 7: D-pad and face buttons (bit fields)
+                DrawSpecialKBitFieldRow("DPad", dataOffset + 7, 0, 4, inputReport, device, "D-pad direction");
+                DrawSpecialKBitFieldRow("ButtonSquare", dataOffset + 7, 4, 1, inputReport, device, "Square button");
+                DrawSpecialKBitFieldRow("ButtonCross", dataOffset + 7, 5, 1, inputReport, device, "Cross button");
+                DrawSpecialKBitFieldRow("ButtonCircle", dataOffset + 7, 6, 1, inputReport, device, "Circle button");
+                DrawSpecialKBitFieldRow("ButtonTriangle", dataOffset + 7, 7, 1, inputReport, device, "Triangle button");
+
+                // Byte 8: Shoulder and trigger buttons
+                DrawSpecialKBitFieldRow("ButtonL1", dataOffset + 8, 0, 1, inputReport, device, "L1 button");
+                DrawSpecialKBitFieldRow("ButtonR1", dataOffset + 8, 1, 1, inputReport, device, "R1 button");
+                DrawSpecialKBitFieldRow("ButtonL2", dataOffset + 8, 2, 1, inputReport, device, "L2 button");
+                DrawSpecialKBitFieldRow("ButtonR2", dataOffset + 8, 3, 1, inputReport, device, "R2 button");
+                DrawSpecialKBitFieldRow("ButtonCreate", dataOffset + 8, 4, 1, inputReport, device, "Create/Share button");
+                DrawSpecialKBitFieldRow("ButtonOptions", dataOffset + 8, 5, 1, inputReport, device, "Options button");
+                DrawSpecialKBitFieldRow("ButtonL3", dataOffset + 8, 6, 1, inputReport, device, "L3 button");
+                DrawSpecialKBitFieldRow("ButtonR3", dataOffset + 8, 7, 1, inputReport, device, "R3 button");
+
+                // Byte 9: Home, pad, mute, and Edge buttons
+                DrawSpecialKBitFieldRow("ButtonHome", dataOffset + 9, 0, 1, inputReport, device, "Home/PS button");
+                DrawSpecialKBitFieldRow("ButtonPad", dataOffset + 9, 1, 1, inputReport, device, "Touchpad button");
+                DrawSpecialKBitFieldRow("ButtonMute", dataOffset + 9, 2, 1, inputReport, device, "Mute button");
+                DrawSpecialKBitFieldRow("UNK1", dataOffset + 9, 3, 1, inputReport, device, "Unknown bit 1");
+                DrawSpecialKBitFieldRow("ButtonLeftFunction", dataOffset + 9, 4, 1, inputReport, device, "Left Function (Edge)");
+                DrawSpecialKBitFieldRow("ButtonRightFunction", dataOffset + 9, 5, 1, inputReport, device, "Right Function (Edge)");
+                DrawSpecialKBitFieldRow("ButtonLeftPaddle", dataOffset + 9, 6, 1, inputReport, device, "Left Paddle (Edge)");
+                DrawSpecialKBitFieldRow("ButtonRightPaddle", dataOffset + 9, 7, 1, inputReport, device, "Right Paddle (Edge)");
+
+                DrawSpecialKFieldRow("UNK2", dataOffset + 10, 1, inputReport, device);
+                DrawSpecialKFieldRow("UNK_COUNTER", dataOffset + 11, 4, inputReport, device, "32-bit counter");
+                DrawSpecialKFieldRow("AngularVelocityX", dataOffset + 15, 2, inputReport, device, "16-bit signed");
+                DrawSpecialKFieldRow("AngularVelocityZ", dataOffset + 17, 2, inputReport, device, "16-bit signed");
+                DrawSpecialKFieldRow("AngularVelocityY", dataOffset + 19, 2, inputReport, device, "16-bit signed");
+                DrawSpecialKFieldRow("AccelerometerX", dataOffset + 21, 2, inputReport, device, "16-bit signed");
+                DrawSpecialKFieldRow("AccelerometerY", dataOffset + 23, 2, inputReport, device, "16-bit signed");
+                DrawSpecialKFieldRow("AccelerometerZ", dataOffset + 25, 2, inputReport, device, "16-bit signed");
+                DrawSpecialKFieldRow("SensorTimestamp", dataOffset + 27, 4, inputReport, device, "32-bit timestamp");
+                DrawSpecialKFieldRow("Temperature", dataOffset + 31, 1, inputReport, device, "8-bit signed");
+
+                // Touch data (9 bytes)
+                for (int i = 0; i < 9; i++) {
+                    DrawSpecialKFieldRow(("TouchData[" + std::to_string(i) + "]").c_str(),
+                                       dataOffset + 32 + i, 1, inputReport, device);
+                }
+
+                // Trigger status and effects
+                DrawSpecialKBitFieldRow("TriggerRightStopLocation", dataOffset + 41, 0, 4, inputReport, device, "0-9 range");
+                DrawSpecialKBitFieldRow("TriggerRightStatus", dataOffset + 41, 4, 4, inputReport, device, "Status flags");
+                DrawSpecialKBitFieldRow("TriggerLeftStopLocation", dataOffset + 42, 0, 4, inputReport, device, "0-9 range");
+                DrawSpecialKBitFieldRow("TriggerLeftStatus", dataOffset + 42, 4, 4, inputReport, device, "Status flags");
+
+                DrawSpecialKFieldRow("HostTimestamp", dataOffset + 43, 4, inputReport, device, "32-bit timestamp");
+
+                DrawSpecialKBitFieldRow("TriggerRightEffect", dataOffset + 47, 0, 4, inputReport, device, "Active effect");
+                DrawSpecialKBitFieldRow("TriggerLeftEffect", dataOffset + 47, 4, 4, inputReport, device, "Active effect");
+
+                DrawSpecialKFieldRow("DeviceTimeStamp", dataOffset + 48, 4, inputReport, device, "32-bit timestamp");
+
+                // Power information
+                DrawSpecialKBitFieldRow("PowerPercent", dataOffset + 52, 0, 4, inputReport, device, "0-10 range");
+                DrawSpecialKBitFieldRow("PowerState", dataOffset + 52, 4, 4, inputReport, device, "Power state enum");
+
+                // Connection status
+                DrawSpecialKBitFieldRow("PluggedHeadphones", dataOffset + 53, 0, 1, inputReport, device, "Headphones connected");
+                DrawSpecialKBitFieldRow("PluggedMic", dataOffset + 53, 1, 1, inputReport, device, "Microphone connected");
+                DrawSpecialKBitFieldRow("MicMuted", dataOffset + 53, 2, 1, inputReport, device, "Microphone muted");
+                DrawSpecialKBitFieldRow("PluggedUsbData", dataOffset + 53, 3, 1, inputReport, device, "USB data connected");
+                DrawSpecialKBitFieldRow("PluggedUsbPower", dataOffset + 53, 4, 1, inputReport, device, "USB power connected");
+                DrawSpecialKBitFieldRow("PluggedUnk1", dataOffset + 53, 5, 3, inputReport, device, "Unknown bits");
+
+                DrawSpecialKBitFieldRow("PluggedExternalMic", dataOffset + 54, 0, 1, inputReport, device, "External mic active");
+                DrawSpecialKBitFieldRow("HapticLowPassFilter", dataOffset + 54, 1, 1, inputReport, device, "Haptic filter active");
+                DrawSpecialKBitFieldRow("PluggedUnk3", dataOffset + 54, 2, 6, inputReport, device, "Unknown bits");
+
+                // AES CMAC (8 bytes)
+                for (int i = 0; i < 8; i++) {
+                    DrawSpecialKFieldRow(("AesCmac[" + std::to_string(i) + "]").c_str(),
+                                       dataOffset + 55 + i, 1, inputReport, device);
+                }
+
+                ImGui::EndTable();
             }
+        } else {
+            ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Insufficient data for Special-K format");
         }
 
     } else {
@@ -1099,7 +1046,7 @@ std::string DualSenseWidget::GetByteNotes(int offset, const std::string& connect
 }
 
 void DualSenseWidget::DrawRawButtonStates(const DualSenseDeviceInfo& device) {
-    if (!ImGui::CollapsingHeader("Raw Buttons (with Debug Offset)", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (!ImGui::CollapsingHeader("Raw Buttons (Special-K Format)", ImGuiTreeNodeFlags_DefaultOpen)) {
         return;
     }
 
@@ -1108,38 +1055,8 @@ void DualSenseWidget::DrawRawButtonStates(const DualSenseDeviceInfo& device) {
         return;
     }
 
-    const auto& inputReport = device.hid_device->input_report;
-    int offset = g_shared_state->debug_offset.load();
-
-    // Parse buttons with debug offset
-    WORD buttons = 0;
-
-    // Buttons 1 (with offset)
-    if (1 + offset < inputReport.size()) {
-        BYTE button1 = inputReport[1 + offset];
-        if (button1 & 0x10) buttons |= XINPUT_GAMEPAD_LEFT_SHOULDER;  // L1
-        if (button1 & 0x20) buttons |= XINPUT_GAMEPAD_RIGHT_SHOULDER; // R1
-        if (button1 & 0x01) buttons |= XINPUT_GAMEPAD_X;              // Square -> X
-        if (button1 & 0x02) buttons |= XINPUT_GAMEPAD_A;              // Cross -> A
-        if (button1 & 0x04) buttons |= XINPUT_GAMEPAD_B;              // Circle -> B
-        if (button1 & 0x08) buttons |= XINPUT_GAMEPAD_Y;              // Triangle -> Y
-    }
-
-    // Buttons 2 (with offset)
-    if (2 + offset < inputReport.size()) {
-        BYTE button2 = inputReport[2 + offset];
-        if (button2 & 0x01) buttons |= XINPUT_GAMEPAD_BACK;           // Share
-        if (button2 & 0x02) buttons |= XINPUT_GAMEPAD_START;          // Options
-        if (button2 & 0x04) buttons |= XINPUT_GAMEPAD_LEFT_THUMB;     // L3
-        if (button2 & 0x08) buttons |= XINPUT_GAMEPAD_RIGHT_THUMB;    // R3
-        if (button2 & 0x10) buttons |= 0x0400;                        // PS (custom constant)
-    }
-
-    // D-Pad (with offset)
-    if (3 + offset < inputReport.size()) {
-        BYTE dpad = inputReport[3 + offset] & 0x0F;
-        buttons |= dpad; // D-Pad is already in the correct format
-    }
+    // Use XInput state (converted from Special-K DualSense data)
+    WORD buttons = device.current_state.Gamepad.wButtons;
 
     // Display buttons
     const struct {
@@ -1159,7 +1076,6 @@ void DualSenseWidget::DrawRawButtonStates(const DualSenseDeviceInfo& device) {
         {0x0400, "PS"},
     };
 
-    ImGui::Text("Using offset: %d", offset);
     ImGui::Columns(3, "RawButtonColumns", false);
     for (const auto& button : button_list) {
         bool pressed = IsButtonPressed(buttons, button.mask);
@@ -1176,7 +1092,7 @@ void DualSenseWidget::DrawRawButtonStates(const DualSenseDeviceInfo& device) {
 }
 
 void DualSenseWidget::DrawRawStickStates(const DualSenseDeviceInfo& device) {
-    if (!ImGui::CollapsingHeader("Raw Analog Sticks (with Debug Offset)", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (!ImGui::CollapsingHeader("Raw Analog Sticks (Special-K Format)", ImGuiTreeNodeFlags_DefaultOpen)) {
         return;
     }
 
@@ -1185,18 +1101,12 @@ void DualSenseWidget::DrawRawStickStates(const DualSenseDeviceInfo& device) {
         return;
     }
 
-    const auto& inputReport = device.hid_device->input_report;
-    int offset = g_shared_state->debug_offset.load();
-
-    ImGui::Text("Using offset: %d", offset);
+    // Use XInput state (converted from Special-K DualSense data)
+    SHORT leftX = device.current_state.Gamepad.sThumbLX;
+    SHORT leftY = device.current_state.Gamepad.sThumbLY;
 
     // Left stick
     ImGui::Text("Left Stick:");
-    SHORT leftX = 0, leftY = 0;
-    if (4 + offset + 1 < inputReport.size()) {
-        leftX = static_cast<SHORT>((inputReport[5 + offset] << 8) | inputReport[4 + offset]);
-        leftY = static_cast<SHORT>((inputReport[7 + offset] << 8) | inputReport[6 + offset]);
-    }
 
     float lx = ShortToFloat(leftX);
     float ly = ShortToFloat(leftY);
@@ -1225,11 +1135,8 @@ void DualSenseWidget::DrawRawStickStates(const DualSenseDeviceInfo& device) {
 
     // Right stick
     ImGui::Text("Right Stick:");
-    SHORT rightX = 0, rightY = 0;
-    if (8 + offset + 1 < inputReport.size()) {
-        rightX = static_cast<SHORT>((inputReport[9 + offset] << 8) | inputReport[8 + offset]);
-        rightY = static_cast<SHORT>((inputReport[11 + offset] << 8) | inputReport[10 + offset]);
-    }
+    SHORT rightX = device.current_state.Gamepad.sThumbRX;
+    SHORT rightY = device.current_state.Gamepad.sThumbRY;
 
     float rx = ShortToFloat(rightX);
     float ry = ShortToFloat(rightY);
@@ -1257,7 +1164,7 @@ void DualSenseWidget::DrawRawStickStates(const DualSenseDeviceInfo& device) {
 }
 
 void DualSenseWidget::DrawRawTriggerStates(const DualSenseDeviceInfo& device) {
-    if (!ImGui::CollapsingHeader("Raw Triggers (with Debug Offset)", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (!ImGui::CollapsingHeader("Raw Triggers (Special-K Format)", ImGuiTreeNodeFlags_DefaultOpen)) {
         return;
     }
 
@@ -1266,30 +1173,302 @@ void DualSenseWidget::DrawRawTriggerStates(const DualSenseDeviceInfo& device) {
         return;
     }
 
-    const auto& inputReport = device.hid_device->input_report;
-    int offset = g_shared_state->debug_offset.load();
-
-    ImGui::Text("Using offset: %d", offset);
-
-    // Left trigger
-    USHORT leftTrigger = 0;
-    if (12 + offset + 1 < inputReport.size()) {
-        leftTrigger = static_cast<USHORT>((inputReport[13 + offset] << 8) | inputReport[12 + offset]);
-    }
+    // Use XInput state (converted from Special-K DualSense data)
+    USHORT leftTrigger = device.current_state.Gamepad.bLeftTrigger;
 
     ImGui::Text("Left Trigger: %u/65535 (%.1f%%)",
                leftTrigger,
                (static_cast<float>(leftTrigger) / 65535.0f) * 100.0f);
 
     // Right trigger
-    USHORT rightTrigger = 0;
-    if (14 + offset + 1 < inputReport.size()) {
-        rightTrigger = static_cast<USHORT>((inputReport[15 + offset] << 8) | inputReport[14 + offset]);
-    }
+    USHORT rightTrigger = device.current_state.Gamepad.bRightTrigger;
 
     ImGui::Text("Right Trigger: %u/65535 (%.1f%%)",
                rightTrigger,
                (static_cast<float>(rightTrigger) / 65535.0f) * 100.0f);
+}
+
+void DualSenseWidget::DrawSpecialKData(const DualSenseDeviceInfo& device) {
+    if (!ImGui::CollapsingHeader("Special-K DualSense Data", ImGuiTreeNodeFlags_DefaultOpen)) {
+        return;
+    }
+
+    const auto& sk_data = device.sk_dualsense_data;
+
+    // Basic input data
+    if (ImGui::CollapsingHeader("Input Data", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Columns(2, "SKInputColumns", false);
+
+        // Sticks
+        ImGui::Text("Left Stick: X=%d, Y=%d", sk_data.LeftStickX, sk_data.LeftStickY);
+        ImGui::NextColumn();
+        ImGui::Text("Right Stick: X=%d, Y=%d", sk_data.RightStickX, sk_data.RightStickY);
+        ImGui::NextColumn();
+
+        // Triggers
+        ImGui::Text("Left Trigger: %d", sk_data.TriggerLeft);
+        ImGui::NextColumn();
+        ImGui::Text("Right Trigger: %d", sk_data.TriggerRight);
+        ImGui::NextColumn();
+
+        // D-pad
+        const char* dpad_names[] = {"Up", "Up-Right", "Right", "Down-Right", "Down", "Down-Left", "Left", "Up-Left", "None"};
+        ImGui::Text("D-Pad: %s", dpad_names[static_cast<int>(sk_data.DPad)]);
+        ImGui::NextColumn();
+        ImGui::Text("Sequence: %d", sk_data.SeqNo);
+        ImGui::NextColumn();
+
+        ImGui::Columns(1);
+    }
+
+    // Button states
+    if (ImGui::CollapsingHeader("Button States", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Columns(3, "SKButtonColumns", false);
+
+        // Face buttons
+        ImGui::Text("Square: %s", sk_data.ButtonSquare ? "PRESSED" : "Released");
+        ImGui::NextColumn();
+        ImGui::Text("Cross: %s", sk_data.ButtonCross ? "PRESSED" : "Released");
+        ImGui::NextColumn();
+        ImGui::Text("Circle: %s", sk_data.ButtonCircle ? "PRESSED" : "Released");
+        ImGui::NextColumn();
+        ImGui::Text("Triangle: %s", sk_data.ButtonTriangle ? "PRESSED" : "Released");
+        ImGui::NextColumn();
+
+        // Shoulder buttons
+        ImGui::Text("L1: %s", sk_data.ButtonL1 ? "PRESSED" : "Released");
+        ImGui::NextColumn();
+        ImGui::Text("R1: %s", sk_data.ButtonR1 ? "PRESSED" : "Released");
+        ImGui::NextColumn();
+        ImGui::Text("L2: %s", sk_data.ButtonL2 ? "PRESSED" : "Released");
+        ImGui::NextColumn();
+        ImGui::Text("R2: %s", sk_data.ButtonR2 ? "PRESSED" : "Released");
+        ImGui::NextColumn();
+
+        // System buttons
+        ImGui::Text("Create: %s", sk_data.ButtonCreate ? "PRESSED" : "Released");
+        ImGui::NextColumn();
+        ImGui::Text("Options: %s", sk_data.ButtonOptions ? "PRESSED" : "Released");
+        ImGui::NextColumn();
+        ImGui::Text("L3: %s", sk_data.ButtonL3 ? "PRESSED" : "Released");
+        ImGui::NextColumn();
+        ImGui::Text("R3: %s", sk_data.ButtonR3 ? "PRESSED" : "Released");
+        ImGui::NextColumn();
+        ImGui::Text("Home: %s", sk_data.ButtonHome ? "PRESSED" : "Released");
+        ImGui::NextColumn();
+        ImGui::Text("Touchpad: %s", sk_data.ButtonPad ? "PRESSED" : "Released");
+        ImGui::NextColumn();
+        ImGui::Text("Mute: %s", sk_data.ButtonMute ? "PRESSED" : "Released");
+        ImGui::NextColumn();
+
+        // Edge controller buttons
+        if (sk_data.ButtonLeftFunction || sk_data.ButtonRightFunction || sk_data.ButtonLeftPaddle || sk_data.ButtonRightPaddle) {
+            ImGui::Text("Left Function: %s", sk_data.ButtonLeftFunction ? "PRESSED" : "Released");
+            ImGui::NextColumn();
+            ImGui::Text("Right Function: %s", sk_data.ButtonRightFunction ? "PRESSED" : "Released");
+            ImGui::NextColumn();
+            ImGui::Text("Left Paddle: %s", sk_data.ButtonLeftPaddle ? "PRESSED" : "Released");
+            ImGui::NextColumn();
+            ImGui::Text("Right Paddle: %s", sk_data.ButtonRightPaddle ? "PRESSED" : "Released");
+            ImGui::NextColumn();
+        }
+
+        ImGui::Columns(1);
+    }
+
+    // Motion sensors
+    if (ImGui::CollapsingHeader("Motion Sensors")) {
+        ImGui::Columns(2, "SKMotionColumns", false);
+
+        ImGui::Text("Angular Velocity X: %d", sk_data.AngularVelocityX);
+        ImGui::NextColumn();
+        ImGui::Text("Angular Velocity Y: %d", sk_data.AngularVelocityY);
+        ImGui::NextColumn();
+        ImGui::Text("Angular Velocity Z: %d", sk_data.AngularVelocityZ);
+        ImGui::NextColumn();
+        ImGui::Text("Accelerometer X: %d", sk_data.AccelerometerX);
+        ImGui::NextColumn();
+        ImGui::Text("Accelerometer Y: %d", sk_data.AccelerometerY);
+        ImGui::NextColumn();
+        ImGui::Text("Accelerometer Z: %d", sk_data.AccelerometerZ);
+        ImGui::NextColumn();
+        ImGui::Text("Temperature: %d°C", sk_data.Temperature);
+        ImGui::NextColumn();
+        ImGui::Text("Sensor Timestamp: %u", sk_data.SensorTimestamp);
+        ImGui::NextColumn();
+
+        ImGui::Columns(1);
+    }
+
+    // Battery and power
+    if (ImGui::CollapsingHeader("Battery & Power")) {
+        ImGui::Columns(2, "SKPowerColumns", false);
+
+        ImGui::Text("Battery: %d%%", sk_data.PowerPercent * 10);
+        ImGui::NextColumn();
+        const char* power_state_names[] = {"Unknown", "Charging", "Discharging", "Not Charging", "Full"};
+        ImGui::Text("Power State: %s", power_state_names[static_cast<int>(sk_data.PowerState)]);
+        ImGui::NextColumn();
+        ImGui::Text("USB Data: %s", sk_data.PluggedUsbData ? "Yes" : "No");
+        ImGui::NextColumn();
+        ImGui::Text("USB Power: %s", sk_data.PluggedUsbPower ? "Yes" : "No");
+        ImGui::NextColumn();
+        ImGui::Text("Headphones: %s", sk_data.PluggedHeadphones ? "Yes" : "No");
+        ImGui::NextColumn();
+        ImGui::Text("Microphone: %s", sk_data.PluggedMic ? "Yes" : "No");
+        ImGui::NextColumn();
+        ImGui::Text("External Mic: %s", sk_data.PluggedExternalMic ? "Yes" : "No");
+        ImGui::NextColumn();
+        ImGui::Text("Mic Muted: %s", sk_data.MicMuted ? "Yes" : "No");
+        ImGui::NextColumn();
+        ImGui::Text("Haptic Filter: %s", sk_data.HapticLowPassFilter ? "On" : "Off");
+        ImGui::NextColumn();
+
+        ImGui::Columns(1);
+    }
+
+    // Adaptive triggers
+    if (ImGui::CollapsingHeader("Adaptive Triggers")) {
+        ImGui::Columns(2, "SKTriggerColumns", false);
+
+        ImGui::Text("Left Trigger Status: %d", sk_data.TriggerLeftStatus);
+        ImGui::NextColumn();
+        ImGui::Text("Right Trigger Status: %d", sk_data.TriggerRightStatus);
+        ImGui::NextColumn();
+        ImGui::Text("Left Stop Location: %d", sk_data.TriggerLeftStopLocation);
+        ImGui::NextColumn();
+        ImGui::Text("Right Stop Location: %d", sk_data.TriggerRightStopLocation);
+        ImGui::NextColumn();
+        ImGui::Text("Left Effect: %d", sk_data.TriggerLeftEffect);
+        ImGui::NextColumn();
+        ImGui::Text("Right Effect: %d", sk_data.TriggerRightEffect);
+        ImGui::NextColumn();
+
+        ImGui::Columns(1);
+    }
+
+    // Timestamps
+    if (ImGui::CollapsingHeader("Timestamps")) {
+        ImGui::Text("Host Timestamp: %u", sk_data.HostTimestamp);
+        ImGui::Text("Device Timestamp: %u", sk_data.DeviceTimeStamp);
+        ImGui::Text("Sensor Timestamp: %u", sk_data.SensorTimestamp);
+    }
+
+    // Touch data
+    if (ImGui::CollapsingHeader("Touch Data")) {
+        ImGui::Text("Touch Data: ");
+        for (int i = 0; i < 9; i++) {
+            ImGui::SameLine();
+            ImGui::Text("%02X ", sk_data.TouchData.data[i]);
+        }
+    }
+
+    // Debug info
+    if (ImGui::CollapsingHeader("Debug Info")) {
+        ImGui::Text("Unknown Counter: %u", sk_data.UNK_COUNTER);
+        ImGui::Text("Unknown 1: %d", sk_data.UNK1);
+        ImGui::Text("Unknown 2: %d", sk_data.UNK2);
+        ImGui::Text("Unknown 3: %d", sk_data.PluggedUnk1);
+        ImGui::Text("Unknown 4: %d", sk_data.PluggedUnk3);
+
+        ImGui::Text("AES CMAC: ");
+        for (int i = 0; i < 8; i++) {
+            ImGui::SameLine();
+            ImGui::Text("%02X ", sk_data.AesCmac[i]);
+        }
+    }
+}
+
+// Special-K debug helper functions
+void DualSenseWidget::DrawSpecialKFieldRow(const char* fieldName, int offset, int size, const std::vector<BYTE>& inputReport, const DualSenseDeviceInfo& device, const char* description) {
+    if (offset + size > inputReport.size()) {
+        return; // Not enough data
+    }
+
+    ImGui::TableNextRow();
+
+    // Field Name
+    ImGui::TableSetColumnIndex(0);
+    ImGui::Text("%s", fieldName);
+
+    // Offset
+    ImGui::TableSetColumnIndex(1);
+    ImGui::Text("%d", offset);
+
+    // Size
+    ImGui::TableSetColumnIndex(2);
+    ImGui::Text("%d byte%s", size, size > 1 ? "s" : "");
+
+    // Raw Value
+    ImGui::TableSetColumnIndex(3);
+    if (size == 1) {
+        ImGui::Text("0x%02X (%d)", inputReport[offset], inputReport[offset]);
+    } else if (size == 2) {
+        uint16_t value = *reinterpret_cast<const uint16_t*>(&inputReport[offset]);
+        ImGui::Text("0x%04X (%d)", value, value);
+    } else if (size == 4) {
+        uint32_t value = *reinterpret_cast<const uint32_t*>(&inputReport[offset]);
+        ImGui::Text("0x%08X (%u)", value, value);
+    } else {
+        ImGui::Text("Multi-byte");
+    }
+
+    // Interpreted Value
+    ImGui::TableSetColumnIndex(4);
+    if (size == 1) {
+        ImGui::Text("%d", inputReport[offset]);
+    } else if (size == 2) {
+        int16_t value = *reinterpret_cast<const int16_t*>(&inputReport[offset]);
+        ImGui::Text("%d", value);
+    } else if (size == 4) {
+        int32_t value = *reinterpret_cast<const int32_t*>(&inputReport[offset]);
+        ImGui::Text("%d", value);
+    } else {
+        ImGui::Text("N/A");
+    }
+
+    // Description
+    ImGui::TableSetColumnIndex(5);
+    ImGui::Text("%s", description ? description : "Special-K field");
+}
+
+void DualSenseWidget::DrawSpecialKBitFieldRow(const char* fieldName, int byteOffset, int bitOffset, int bitCount, const std::vector<BYTE>& inputReport, const DualSenseDeviceInfo& device, const char* description) {
+    if (byteOffset >= inputReport.size()) {
+        return; // Not enough data
+    }
+
+    ImGui::TableNextRow();
+
+    // Field Name
+    ImGui::TableSetColumnIndex(0);
+    ImGui::Text("%s", fieldName);
+
+    // Offset
+    ImGui::TableSetColumnIndex(1);
+    ImGui::Text("%d.%d", byteOffset, bitOffset);
+
+    // Size
+    ImGui::TableSetColumnIndex(2);
+    ImGui::Text("%d bit%s", bitCount, bitCount > 1 ? "s" : "");
+
+    // Raw Value
+    ImGui::TableSetColumnIndex(3);
+    uint8_t byteValue = inputReport[byteOffset];
+    uint8_t mask = (1 << bitCount) - 1;
+    uint8_t fieldValue = (byteValue >> bitOffset) & mask;
+    ImGui::Text("0x%02X (bit %d-%d)", fieldValue, bitOffset, bitOffset + bitCount - 1);
+
+    // Interpreted Value
+    ImGui::TableSetColumnIndex(4);
+    if (bitCount == 1) {
+        ImGui::Text("%s", fieldValue ? "ON" : "OFF");
+    } else {
+        ImGui::Text("%d", fieldValue);
+    }
+
+    // Description
+    ImGui::TableSetColumnIndex(5);
+    ImGui::Text("%s", description ? description : "Special-K bit field");
 }
 
 // Global functions for device enumeration
