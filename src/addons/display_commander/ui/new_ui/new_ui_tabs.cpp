@@ -7,6 +7,7 @@
 #include "experimental_tab.hpp"
 #include "hook_stats_tab.hpp"
 #include "../../widgets/xinput_widget/xinput_widget.hpp"
+#include "../../widgets/dualsense_widget/dualsense_widget.hpp"
 #include "../../widgets/remapping_widget/remapping_widget.hpp"
 #include "../../addon.hpp"
 
@@ -75,6 +76,9 @@ void InitializeNewUI() {
 
     // Initialize XInput widget
     display_commander::widgets::xinput_widget::InitializeXInputWidget();
+
+    // Initialize DualSense widget
+    display_commander::widgets::dualsense_widget::InitializeDualSenseWidget();
 
     // Initialize remapping widget
     display_commander::widgets::remapping_widget::InitializeRemappingWidget();
@@ -149,6 +153,16 @@ void InitializeNewUI() {
             LogError("Error drawing XInput widget: %s", e.what());
         } catch (...) {
             LogError("Unknown error drawing XInput widget");
+        }
+    });
+
+    g_tab_manager.AddTab("DualSense (Experimental)", "dualsense", []() {
+        try {
+            display_commander::widgets::dualsense_widget::DrawDualSenseWidget();
+        } catch (const std::exception& e) {
+            LogError("Error drawing DualSense widget: %s", e.what());
+        } catch (...) {
+            LogError("Unknown error drawing DualSense widget");
         }
     });
 
