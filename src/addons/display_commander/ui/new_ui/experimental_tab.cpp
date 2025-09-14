@@ -3,6 +3,7 @@
 #include "../../globals.hpp"
 #include "../../hooks/sleep_hooks.hpp"
 #include "../../hooks/timeslowdown_hooks.hpp"
+#include "../../hooks/hid_suppression_hooks.hpp"
 #include "../../utils.hpp"
 #include <deps/imgui/imgui.h>
 #include <windows.h>
@@ -954,6 +955,97 @@ void DrawTimeSlowdownControls() {
         ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "⚠ WARNING: This affects all time-based game logic!");
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Time slowdown affects all game systems that use the selected timer APIs for timing.\nThis includes physics, animations, AI, and other time-dependent systems.\nUse 'Render Thread Only' to minimize impact on non-rendering systems.\nUse 'Everything Except Render Thread' to target non-rendering systems while leaving rendering unaffected.");
+        }
+    }
+
+    // HID Suppression Section
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "HID Suppression");
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Suppress HID input reading for games to prevent them from detecting controllers.\nUseful for preventing games from interfering with controller input handling.");
+    }
+
+    // Master HID suppression enable
+    if (CheckboxSetting(settings::g_experimentalTabSettings.hid_suppression_enabled, "Enable HID Suppression")) {
+        LogInfo("HID suppression %s", settings::g_experimentalTabSettings.hid_suppression_enabled.GetValue() ? "enabled" : "disabled");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Enable/disable HID input suppression for games.");
+    }
+
+    // Direct control button
+    ImGui::SameLine();
+    if (ImGui::Button("Toggle HID Suppression")) {
+        bool current_state = settings::g_experimentalTabSettings.hid_suppression_enabled.GetValue();
+        renodx::hooks::SetHIDSuppressionEnabled(!current_state);
+        LogInfo("HID suppression toggled via button: %s", !current_state ? "enabled" : "disabled");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Directly toggle HID suppression on/off using the SetHIDSuppressionEnabled function.");
+    }
+
+    if (settings::g_experimentalTabSettings.hid_suppression_enabled.GetValue()) {
+        ImGui::Spacing();
+
+        // DualSense only option
+        if (CheckboxSetting(settings::g_experimentalTabSettings.hid_suppression_dualsense_only, "DualSense Only")) {
+            LogInfo("HID suppression DualSense only %s", settings::g_experimentalTabSettings.hid_suppression_dualsense_only.GetValue() ? "enabled" : "disabled");
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Only suppress DualSense controllers. If disabled, suppresses all HID devices.");
+        }
+
+        ImGui::Spacing();
+
+        // Individual function blocking options
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Block Functions:");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Select which HID functions to block for games.");
+        }
+
+        if (CheckboxSetting(settings::g_experimentalTabSettings.hid_suppression_block_readfile, "Block ReadFile")) {
+            LogInfo("HID suppression ReadFile blocking %s", settings::g_experimentalTabSettings.hid_suppression_block_readfile.GetValue() ? "enabled" : "disabled");
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Block ReadFile operations on potential HID devices.");
+        }
+
+        if (CheckboxSetting(settings::g_experimentalTabSettings.hid_suppression_block_getinputreport, "Block HidD_GetInputReport")) {
+            LogInfo("HID suppression HidD_GetInputReport blocking %s", settings::g_experimentalTabSettings.hid_suppression_block_getinputreport.GetValue() ? "enabled" : "disabled");
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Block HidD_GetInputReport function calls.");
+        }
+
+        if (CheckboxSetting(settings::g_experimentalTabSettings.hid_suppression_block_getattributes, "Block HidD_GetAttributes")) {
+            LogInfo("HID suppression HidD_GetAttributes blocking %s", settings::g_experimentalTabSettings.hid_suppression_block_getattributes.GetValue() ? "enabled" : "disabled");
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Block HidD_GetAttributes function calls to prevent device detection.");
+        }
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        // Show current settings summary
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Current Settings:");
+        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Target: %s", settings::g_experimentalTabSettings.hid_suppression_dualsense_only.GetValue() ? "DualSense Only" : "All HID Devices");
+        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  ReadFile: %s", settings::g_experimentalTabSettings.hid_suppression_block_readfile.GetValue() ? "Blocked" : "Allowed");
+        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  GetInputReport: %s", settings::g_experimentalTabSettings.hid_suppression_block_getinputreport.GetValue() ? "Blocked" : "Allowed");
+        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  GetAttributes: %s", settings::g_experimentalTabSettings.hid_suppression_block_getattributes.GetValue() ? "Blocked" : "Allowed");
+
+        // Show hook status
+        bool hooks_installed = renodx::hooks::AreHIDSuppressionHooksInstalled();
+        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Hooks Status: %s", hooks_installed ? "Installed" : "Not Installed");
+
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "⚠ WARNING: This prevents games from reading HID input!");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("HID suppression prevents games from reading controller input directly.\nThis may cause games to not recognize controllers or behave unexpectedly.\nUse with caution and test thoroughly.");
         }
     }
 }

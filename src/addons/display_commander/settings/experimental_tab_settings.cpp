@@ -89,6 +89,11 @@ ExperimentalTabSettings::ExperimentalTabSettings()
         "Render Thread Only",
         "Everything Except Render Thread"
     }, "Experimental")
+    , hid_suppression_enabled("HIDSuppressionEnabled", true, "Experimental")
+    , hid_suppression_dualsense_only("HIDSuppressionDualSenseOnly", true, "Experimental")
+    , hid_suppression_block_readfile("HIDSuppressionBlockReadFile", true, "Experimental")
+    , hid_suppression_block_getinputreport("HIDSuppressionBlockGetInputReport", true, "Experimental")
+    , hid_suppression_block_getattributes("HIDSuppressionBlockGetAttributes", true, "Experimental")
 {
     // Initialize the all_settings_ vector
     all_settings_ = {
@@ -104,7 +109,10 @@ ExperimentalTabSettings::ExperimentalTabSettings()
         &query_performance_counter_hook, &get_tick_count_hook, &get_tick_count64_hook,
         &time_get_time_hook, &get_system_time_hook,
         &get_system_time_as_file_time_hook, &get_system_time_precise_as_file_time_hook,
-        &get_local_time_hook, &nt_query_system_time_hook
+        &get_local_time_hook, &nt_query_system_time_hook,
+        &hid_suppression_enabled, &hid_suppression_dualsense_only,
+        &hid_suppression_block_readfile, &hid_suppression_block_getinputreport,
+        &hid_suppression_block_getattributes
     };
 }
 

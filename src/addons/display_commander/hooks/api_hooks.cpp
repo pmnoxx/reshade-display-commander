@@ -7,6 +7,7 @@
 #include "sleep_hooks.hpp"
 #include "timeslowdown_hooks.hpp"
 #include "process_exit_hooks.hpp"
+#include "hid_suppression_hooks.hpp"
 #include "globals.hpp"
 #include "../utils.hpp"
 #include <MinHook.h>
@@ -219,6 +220,12 @@ bool InstallApiHooks() {
         return false;
     }
 
+    // Install HID suppression hooks
+    if (!InstallHIDSuppressionHooks()) {
+        LogError("Failed to install HID suppression hooks");
+        return false;
+    }
+
     g_api_hooks_installed.store(true);
     LogInfo("API hooks installed successfully");
 
@@ -258,6 +265,9 @@ void UninstallApiHooks() {
 
     // Uninstall process exit hooks
     UninstallProcessExitHooks();
+
+    // Uninstall HID suppression hooks
+    UninstallHIDSuppressionHooks();
 
     // Disable all hooks
     MH_DisableHook(MH_ALL_HOOKS);

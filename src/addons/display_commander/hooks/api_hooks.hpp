@@ -1,6 +1,7 @@
 #pragma once
 
 #include <windows.h>
+#include "hid_suppression_hooks.hpp"
 
 namespace renodx::hooks {
 
