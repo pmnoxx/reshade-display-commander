@@ -153,7 +153,7 @@ void wait_until_qpc(LONGLONG target_qpc, HANDLE& timer_handle)
     // If target time has already passed, return immediately
     if (target_qpc <= current_time_qpc)
         return;
-
+/*
     // Create timer handle if it doesn't exist or is invalid
     if (reinterpret_cast<LONG_PTR>(timer_handle) < 0)
     {
@@ -198,11 +198,12 @@ void wait_until_qpc(LONGLONG target_qpc, HANDLE& timer_handle)
             }
         }
     }
+    */
 
     // Busy wait for the remaining time to achieve precise timing
     // This compensates for OS scheduler inaccuracy
 
-    if (supports_mwaitx()) {
+    if (false && supports_mwaitx()) {
         while (true)
         {
             current_time_qpc = get_now_qpc();
@@ -217,10 +218,18 @@ void wait_until_qpc(LONGLONG target_qpc, HANDLE& timer_handle)
         while (true)
         {
             current_time_qpc = get_now_qpc();
-            if (current_time_qpc >= target_qpc)
+            if (current_time_qpc >= target_qpc - 100)
                 break;
 
             YieldProcessor();
+        }
+        while (true)
+        {
+            current_time_qpc = get_now_qpc();
+            if (current_time_qpc >= target_qpc)
+                break;
+
+          //  YieldProcessor();
         }
     }
 }
