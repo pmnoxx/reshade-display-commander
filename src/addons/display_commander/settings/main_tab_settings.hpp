@@ -1,8 +1,8 @@
 #pragma once
 
 #include "../ui/new_ui/settings_wrapper.hpp"
-#include <vector>
 #include <atomic>
+#include <vector>
 
 // Forward declarations for atomic variables used by main tab settings
 extern std::atomic<bool> s_background_feature_enabled;
@@ -29,63 +29,65 @@ namespace settings {
 // Settings manager for the main tab
 class MainTabSettings {
 public:
-    MainTabSettings();
-    ~MainTabSettings() = default;
+  MainTabSettings();
+  ~MainTabSettings() = default;
 
-    // Load all settings from Reshade config
-    void LoadSettings();
+  // Load all settings from Reshade config
+  void LoadSettings();
 
-    // Get all settings for loading
-    std::vector<ui::new_ui::SettingBase*> GetAllSettings();
+  // Get all settings for loading
+  std::vector<ui::new_ui::SettingBase *> GetAllSettings();
 
-    // Display Settings
-    ui::new_ui::ComboSetting window_mode;
-    ui::new_ui::ComboSetting aspect_index;
-    ui::new_ui::ComboSetting target_monitor_index;
-    ui::new_ui::BoolSettingRef background_feature;
-    ui::new_ui::ComboSetting alignment;
+  // Display Settings
+  ui::new_ui::ComboSetting window_mode;
+  ui::new_ui::ComboSetting aspect_index;
+  ui::new_ui::ComboSetting target_monitor_index;
+  ui::new_ui::BoolSettingRef background_feature;
+  ui::new_ui::ComboSetting alignment;
 
-    // ADHD Multi-Monitor Mode Settings
-    ui::new_ui::BoolSetting adhd_multi_monitor_enabled;
+  // ADHD Multi-Monitor Mode Settings
+  ui::new_ui::BoolSetting adhd_multi_monitor_enabled;
 
-    // FPS Settings
-    ui::new_ui::ComboSetting fps_limiter_mode;
-    ui::new_ui::IntSettingRef scanline_offset;
-    ui::new_ui::IntSettingRef vblank_sync_divisor;
-    ui::new_ui::IntSettingRef fps_limiter_injection;
-    ui::new_ui::FloatSettingRef fps_limit;
-    ui::new_ui::FloatSettingRef fps_limit_background;
-    ui::new_ui::FloatSettingRef present_pacing_delay_percentage;
+  // FPS Settings
+  ui::new_ui::ComboSetting fps_limiter_mode;
+  ui::new_ui::IntSettingRef scanline_offset;
+  ui::new_ui::IntSettingRef vblank_sync_divisor;
+  ui::new_ui::IntSettingRef fps_limiter_injection;
+  ui::new_ui::FloatSettingRef fps_limit;
+  ui::new_ui::FloatSettingRef fps_limit_background;
+  ui::new_ui::FloatSettingRef present_pacing_delay_percentage;
 
-    // VSync & Tearing
-    ui::new_ui::BoolSettingRef force_vsync_on;
-    ui::new_ui::BoolSettingRef force_vsync_off;
-    ui::new_ui::BoolSettingRef prevent_tearing;
+  // VSync & Tearing
+  ui::new_ui::BoolSettingRef force_vsync_on;
+  ui::new_ui::BoolSettingRef force_vsync_off;
+  ui::new_ui::BoolSettingRef prevent_tearing;
 
+  // Audio Settings
+  ui::new_ui::FloatSettingRef audio_volume_percent;
+  ui::new_ui::BoolSettingRef audio_mute;
+  ui::new_ui::BoolSettingRef mute_in_background;
+  ui::new_ui::BoolSettingRef mute_in_background_if_other_audio;
+  ui::new_ui::BoolSetting audio_volume_auto_apply;
 
-    // Audio Settings
-    ui::new_ui::FloatSettingRef audio_volume_percent;
-    ui::new_ui::BoolSettingRef audio_mute;
-    ui::new_ui::BoolSettingRef mute_in_background;
-    ui::new_ui::BoolSettingRef mute_in_background_if_other_audio;
-    ui::new_ui::BoolSetting audio_volume_auto_apply;
+  // Input Blocking (Background) Settings
+  ui::new_ui::BoolSettingRef block_input_in_background;
+  ui::new_ui::BoolSettingRef block_input_without_reshade;
 
-    // Input Blocking (Background) Settings
-    ui::new_ui::BoolSettingRef block_input_in_background;
-    ui::new_ui::BoolSettingRef block_input_without_reshade;
+  // Render Blocking (Background) Settings
+  ui::new_ui::BoolSettingRef no_render_in_background;
+  ui::new_ui::BoolSettingRef no_present_in_background;
 
-    // Render Blocking (Background) Settings
-    ui::new_ui::BoolSettingRef no_render_in_background;
-    ui::new_ui::BoolSettingRef no_present_in_background;
+  // Test Overlay Settings
+  ui::new_ui::BoolSetting show_test_overlay;
 
-    // Test Overlay Settings
-    ui::new_ui::BoolSetting show_test_overlay;
+  // Screensaver Settings
+  ui::new_ui::ComboSetting screensaver_mode;
 
-    // Display Information
-    ui::new_ui::StringSetting target_display;
+  // Display Information
+  ui::new_ui::StringSetting target_display;
 
 private:
-    std::vector<ui::new_ui::SettingBase*> all_settings_;
+  std::vector<ui::new_ui::SettingBase *> all_settings_;
 };
 
 // Global instance
